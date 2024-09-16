@@ -1,10 +1,11 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, func
 from sqlalchemy.orm import relationship
+from app.core.core import app_setting
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./dom_explorer.db"
+SQLALCHEMY_DATABASE_URL = app_setting.DATABASE_URL
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -39,3 +40,11 @@ class SubDomain(Base):
     domain_name = relationship("Domain", back_populates="sub_domain_name")
     issueName = Column(String)
     createdDate = Column(DateTime(timezone=True), server_default=func.now())
+    
+    
+def get_database():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

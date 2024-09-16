@@ -16,7 +16,7 @@ class User(UserBase):
         orm_mode: True
 
 class DomainBase(BaseModel):
-    domain_name: string
+    domain_name: str
 
 class DomainCreate(DomainBase):
     pass

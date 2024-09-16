@@ -1,16 +1,15 @@
-from fastapi import FastAPI, HTTPException, Query, status
-from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
-from typing import List
+from fastapi import FastAPI
+import uvicorn
 
-from datetime import datetime
+from app.database.database import Base, engine
+from app.core.core import app_setting
+from app.controllers.controllers import router as routes
 
-app = FastAPI()
+app = FastAPI(title=app_setting.APP_NAME)
 
 
-@app.get("/health", status_code=status.HTTP_200_OK, description="get the health status of the database and sever")
-def run_health_check():
-    return {
-        "sever_status": "OK",
-        "database": "responsive"
-    }
+app.include_router(routes, prefix="/api/v1")
+
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
