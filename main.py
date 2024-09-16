@@ -7,6 +7,7 @@ from app.controllers.controllers import router as routes
 
 app = FastAPI(title=app_setting.APP_NAME)
 
+Base.metadata.create_all(bind=engine)
 
 app.include_router(routes, prefix="/api/v1")
 
