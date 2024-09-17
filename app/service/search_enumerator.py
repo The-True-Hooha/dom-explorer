@@ -163,7 +163,6 @@ class SubDomainScrapper:
                 'csrfmiddlewaretoken': csrf_token,
                 'targetip': self.domain
             }
-            print(data)
 
             logger.debug(
                 f"Sending POST request to DNS Dumpster with data: {data}")
@@ -199,38 +198,92 @@ class SubDomainScrapper:
     async def virustotal_query(self):
         url = f'https://www.virustotal.com/ui/domains/{self.domain}/subdomains'
         try:
+            logger.debug(f"Sending request to VirusTotal: {url}")
             response = await self.session.get(url, headers=self.getHeaders())
+
+            logger.debug(f"VirusTotal response status code: {
+                         response.status_code}")
+            if response.status_code != 200:
+                logger.error(f"Unexpected status code from VirusTotal: {
+                             response.status_code}")
+                return
+
             data = response.json()
             for item in data.get('data', []):
                 if item['type'] == 'domain':
                     subdomain = item['id']
                     if subdomain.endswith(self.domain) and subdomain != self.domain:
-                        self.subdomains.add(subdomain)
+                        if subdomain.startswith('*.'):
+                            self.wildcard_subdomains.add(subdomain)
+                        else:
+                            self.subdomains.add(subdomain)
+
+            logger.info(f"VirusTotal query found {len(self.subdomains)} regular subdomains and {
+                        len(self.wildcard_subdomains)} wildcard subdomains")
+
+        except httpx.RequestError as e:
+            logger.error(f"HTTP Request Error in VirusTotal query: {str(e)}")
         except Exception as e:
-            print(f"Error in VirusTotal query: {str(e)}")
+            logger.error(f"Unexpected error in VirusTotal query: {str(e)}")
 
     async def threatcrowd_query(self):
         url = f'https://www.threatcrowd.org/searchApi/v2/domain/report/?domain={
             self.domain}'
         try:
+            logger.debug(f"Sending request to ThreatCrowd: {url}")
             response = await self.session.get(url, headers=self.getHeaders())
+
+            logger.debug(f"ThreatCrowd response status code: {
+                         response.status_code}")
+            if response.status_code != 200:
+                logger.error(f"Unexpected status code from ThreatCrowd: {
+                             response.status_code}")
+                return
+
             data = response.json()
             for subdomain in data.get('subdomains', []):
                 if subdomain.endswith(self.domain) and subdomain != self.domain:
-                    self.subdomains.add(subdomain)
+                    if subdomain.startswith('*.'):
+                        self.wildcard_subdomains.add(subdomain)
+                    else:
+                        self.subdomains.add(subdomain)
+
+            logger.info(f"ThreatCrowd query found {len(self.subdomains)} regular subdomains and {
+                        len(self.wildcard_subdomains)} wildcard subdomains")
+
+        except httpx.RequestError as e:
+            logger.error(f"HTTP Request Error in ThreatCrowd query: {str(e)}")
         except Exception as e:
-            print(f"Error in ThreatCrowd query: {str(e)}")
+            logger.error(f"Unexpected error in ThreatCrowd query: {str(e)}")
 
     async def passivedns_query(self):
         url = f'https://api.sublist3r.com/search.php?domain={self.domain}'
         try:
+            logger.debug(f"Sending request to PassiveDNS: {url}")
             response = await self.session.get(url, headers=self.getHeaders())
+
+            logger.debug(f"PassiveDNS response status code: {
+                         response.status_code}")
+            if response.status_code != 200:
+                logger.error(f"Unexpected status code from PassiveDNS: {
+                             response.status_code}")
+                return
+
             subdomains = response.json()
             for subdomain in subdomains:
                 if subdomain.endswith(self.domain) and subdomain != self.domain:
-                    self.subdomains.add(subdomain)
+                    if subdomain.startswith('*.'):
+                        self.wildcard_subdomains.add(subdomain)
+                    else:
+                        self.subdomains.add(subdomain)
+
+            logger.info(f"PassiveDNS query found {len(self.subdomains)} regular subdomains and {
+                        len(self.wildcard_subdomains)} wildcard subdomains")
+
+        except httpx.RequestError as e:
+            logger.error(f"HTTP Request Error in PassiveDNS query: {str(e)}")
         except Exception as e:
-            print(f"Error in PassiveDNS query: {str(e)}")
+            logger.error(f"Unexpected error in PassiveDNS query: {str(e)}")
 
     def get_all_subdomains(self) -> List[str]:
         return sorted(list(self.subdomains.union(self.wildcard_subdomains)))
@@ -238,13 +291,10 @@ class SubDomainScrapper:
     async def run_all_query_async(self):
         tasks = [
             # self.search_engine_enumerator(),
-            # self.crt_sh_query(),
-            # self.dns_query(),
-            # self.netcraft_query(),
+            self.crt_sh_query(),
+            self.dns_query(),
+            self.netcraft_query(),
             self.dns_dumpster_query(),
-            # self.passivedns_query(),
-            # self.threatcrowd_query(),
-            # self.virustotal_query()
         ]
         await asyncio.gather(*tasks)
         await self.session.aclose()
@@ -255,13 +305,11 @@ async def get_subdomain_data(domain: str) -> Dict[str, List[str]]:
     try:
         parsed_domain = urlparse(f"http://{domain}").netloc
         res = SubDomainScrapper(parsed_domain)
-        # await scrapper.crt_sh_query()
         data = await res.run_all_query_async()
 
-        all_subdomains = res.get_all_subdomains()
         return {
             "domain": domain,
-            "count": len(all_subdomains),
+            "count": len(res.subdomains)+len(res.wildcard_subdomains),
             "regular": sorted(list(res.subdomains)),
             "wildcards": sorted(list(res.wildcard_subdomains))
         }
