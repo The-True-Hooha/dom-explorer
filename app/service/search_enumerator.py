@@ -1,18 +1,18 @@
 import httpx
-from datetime import datetime, timedelta
-from fastapi import FastAPI, Depends, HTTPException, status
-
-import asyncio
-import dns.resolver
-import re
-from typing import List, Dict, Set
-from urllib.parse import urlparse, quote_plus
 import threading
 import concurrent.futures
 import random
+import logging
+import asyncio
+import dns.resolver
+import re
 
+from datetime import datetime, timedelta
+from fastapi import FastAPI, Depends, HTTPException, status
+from typing import List, Dict, Set
+from urllib.parse import urlparse, quote_plus
 
-# oauth =
+logger = logging.getLogger(__name__)
 
 
 class SubDomainScrapper:
@@ -118,42 +118,88 @@ class SubDomainScrapper:
         url = f'https://searchdns.netcraft.com/?restriction=site+ends+with&host={
             self.domain}'
         try:
-            res = await self.session.get(url, headers=self.getHeaders())
+            response = await self.session.get(url, headers=self.getHeaders())
             links = re.findall(
-                '<a class="results-table__host" href="(.*?)"', res.text)
-            for l in links:
-                sub_domain = urlparse(l).netloc
-                if sub_domain.endswith(self.domain) and sub_domain != self.domain:
-                    self.subdomains.add(sub_domain)
+                '<a class="results-table__host" href="(.*?)"', response.text)
+            for link in links:
+                subdomain = urlparse(link).netloc
+                if subdomain.endswith(self.domain) and subdomain != self.domain:
+                    if subdomain.startswith('*.'):
+                        self.wildcard_subdomains.add(subdomain)
+                    else:
+                        self.subdomains.add(subdomain)
+        except httpx.RequestError as e:
+            print(f"HTTP Request Error in Netcraft query: {str(e)}")
         except Exception as e:
-            print(f"Error in netcraft query: {str(e)}")
+            print(f"Unexpected error in Netcraft query: {str(e)}")
 
     async def dns_dumpster_query(self):
         url = 'https://dnsdumpster.com/'
         try:
-            res = await self.session.get(url, headers=self.getHeaders())
-            csrf_token = re.search(
-                r'name="csrfmiddlewaretoken" value="(.*?)"', response.text).group(1)
-            cookie_data = res.cookies
+            logger.debug(f"Sending initial GET request to DNS Dumpster: {url}")
+            response = await self.session.get(url, headers=self.getHeaders())
+
+            logger.debug(f"Initial response status code: {
+                         response.status_code}")
+            if response.status_code != 200:
+                logger.error(f"Unexpected status code in initial request: {
+                             response.status_code}")
+                return
+
+            csrf_token_match = re.search(
+                r'name="csrfmiddlewaretoken" value="(.*?)"', response.text)
+            if not csrf_token_match:
+                logger.error("CSRF token not found in the response")
+                return
+
+            csrf_token = csrf_token_match.group(1)
+            logger.debug(f"CSRF token found: {csrf_token}")
+
+            cookie_data = response.cookies
             headers = self.getHeaders()
             headers['Referer'] = url
+
             data = {
                 'csrfmiddlewaretoken': csrf_token,
                 'targetip': self.domain
             }
+            print(data)
+
+            logger.debug(
+                f"Sending POST request to DNS Dumpster with data: {data}")
             response = await self.session.post(url, headers=headers, cookies=cookie_data, data=data)
+
+            logger.debug(f"POST response status code: {response.status_code}")
+            if response.status_code != 200:
+                logger.error(f"Unexpected status code in POST request: {
+                             response.status_code}")
+                return
+
             subdomains = re.findall(
                 r'<td class="col-md-4">(.*?)<br>', response.text)
-            for d in subdomains:
-                if d.endswith(self.domain) and d != self.domain:
-                    self.subdomains.add(i.strip())
+            logger.info(f"Total subdomains found: {len(subdomains)}")
+
+            for subdomain in subdomains:
+                subdomain = subdomain.strip()
+                if subdomain.endswith(self.domain) and subdomain != self.domain:
+                    if subdomain.startswith('*.'):
+                        self.wildcard_subdomains.add(subdomain)
+                    else:
+                        self.subdomains.add(subdomain)
+
+            logger.info(f"Regular subdomains found: {len(self.subdomains)}")
+            logger.info(f"Wildcard subdomains found: {
+                        len(self.wildcard_subdomains)}")
+
+        except httpx.RequestError as e:
+            logger.error(f"HTTP Request Error in DNS Dumpster query: {str(e)}")
         except Exception as e:
-            print(f"Error in dns_dumpster query: {str(e)}")
+            logger.error(f"Unexpected error in DNS Dumpster query: {str(e)}")
 
     async def virustotal_query(self):
         url = f'https://www.virustotal.com/ui/domains/{self.domain}/subdomains'
         try:
-            response = await self.session.get(url, headers=self.get_headers())
+            response = await self.session.get(url, headers=self.getHeaders())
             data = response.json()
             for item in data.get('data', []):
                 if item['type'] == 'domain':
@@ -167,7 +213,7 @@ class SubDomainScrapper:
         url = f'https://www.threatcrowd.org/searchApi/v2/domain/report/?domain={
             self.domain}'
         try:
-            response = await self.session.get(url, headers=self.get_headers())
+            response = await self.session.get(url, headers=self.getHeaders())
             data = response.json()
             for subdomain in data.get('subdomains', []):
                 if subdomain.endswith(self.domain) and subdomain != self.domain:
@@ -178,7 +224,7 @@ class SubDomainScrapper:
     async def passivedns_query(self):
         url = f'https://api.sublist3r.com/search.php?domain={self.domain}'
         try:
-            response = await self.session.get(url, headers=self.get_headers())
+            response = await self.session.get(url, headers=self.getHeaders())
             subdomains = response.json()
             for subdomain in subdomains:
                 if subdomain.endswith(self.domain) and subdomain != self.domain:
@@ -194,8 +240,8 @@ class SubDomainScrapper:
             # self.search_engine_enumerator(),
             # self.crt_sh_query(),
             # self.dns_query(),
-            self.netcraft_query(),
-            # self.dns_dumpster_query(),
+            # self.netcraft_query(),
+            self.dns_dumpster_query(),
             # self.passivedns_query(),
             # self.threatcrowd_query(),
             # self.virustotal_query()
