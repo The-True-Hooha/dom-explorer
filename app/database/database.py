@@ -38,10 +38,9 @@ class SubDomain(Base):
     __tablename__ = "sub_domain"
 
     id = Column(Integer, primary_key=True, index=True)
-    ctId = Column(String)
     domain_id = Column(Integer, ForeignKey('domain.id'))
     domain = relationship("Domain", back_populates="sub_domains")
-    issueName = Column(String)
+    name = Column(String)
     createdDate = Column(DateTime(timezone=True), server_default=func.now())
     
     

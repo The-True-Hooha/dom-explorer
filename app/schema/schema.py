@@ -32,8 +32,9 @@ class DomainResponse(DomainBase):
     # isActive: bool
     # createdDate: datetime
     # user_id: int
-    sub_domain: List[str] = []
     count: int
+    regular: List[str] = []
+    wildcards: List[str] = []
 
     class ConfigDict:
         from_attributes = True

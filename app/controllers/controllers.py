@@ -1,12 +1,13 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import text
+from pydantic import BaseModel
 from typing import List
 from datetime import datetime
 
-# from schema.schema import UserCreate, UserResponse
-from app.schema.schema import UserCreate
+from app.schema.schema import UserCreate, UserResponse, DomainResponse
 from app.database.database import User, Domain, SubDomain, get_database
-# from app.core.security import get_password_hash
+from app.service.search_enumerator import get_subdomain_data
 
 router = APIRouter()
 
@@ -14,8 +15,8 @@ router = APIRouter()
 @router.get("/health", status_code=status.HTTP_200_OK, description="Get the health status of the database and server")
 def run_health_check(db: Session = Depends(get_database)):
     try:
-        # Perform a simple database query to check its responsiveness
-        db.execute("SELECT 1")
+        print("hello world, from db check")
+        db.execute(text("SELECT 1"))
         return {
             "server_status": "OK",
             "database": "responsive"
@@ -25,12 +26,18 @@ def run_health_check(db: Session = Depends(get_database)):
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
 
 
-# @router.post('/users', response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-# def create_new_user(user: UserCreate, db: Session = Depends(get_db)):
-#     db_user = get_user_by_email(db, email=user.email)
-#     if db_user:
-#         raise HTTPException(status_code=400, detail="Email already registered")
-#     return create_user(db=db, user=user)
+@router.post('/user', response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+def create_new_user(user: UserCreate, db: Session = Depends(get_database)):
+    db_user = get_user_by_email(db, email=user.email)
+    if db_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    return create_user(db=db, user=user)
+
+@router.get("/search", response_model=DomainResponse)
+async def search_sub_domain(domain:str):
+    print('hello world', "from the east", domain)
+    data = await get_subdomain_data(domain)
+    return data
 
 
 # @router.get('/users/{user_id}', response_model=UserResponse)
