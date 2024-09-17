@@ -51,12 +51,13 @@ class SubDomainScrapper:
                     sub_domain = re.findall(
                         r'(?<=//|\s)(\w+\.' + re.escape(self.domain) + ')', res.text)
                     self.subdomains.update(sub_domain)
-                    page_no += 10 if search_engine in ['google', 'bing', 'yahoo', 'baidu'] else 1
+                    page_no += 10 if search_engine in ['google',
+                                                       'bing', 'yahoo', 'baidu'] else 1
                 except Exception as e:
-                    print(f"Error from source {search_engine} search: {str(e)}")
+                    print(f"Error from source {
+                          search_engine} search: {str(e)}")
                     break
                 await asyncio.sleep(random.randint(2, 7))
-
 
     async def crt_sh_query(self):
         url = f"https://crt.sh/?q=%.{self.domain}&output=json"
@@ -64,7 +65,7 @@ class SubDomainScrapper:
             async with httpx.AsyncClient() as client:
                 response = await client.get(url)
                 data = response.json()
-                
+
                 for entry in data:
                     name_value = entry.get('name_value', '')
                     parts = name_value.split('\n')
@@ -75,27 +76,44 @@ class SubDomainScrapper:
                                 self.wildcard_subdomains.add(part)
                             else:
                                 self.subdomains.add(part)
-            
-            print(f"Found {len(self.subdomains)} regular subdomains and {len(self.wildcard_subdomains)} wildcard subdomains from crt.sh")
         except json.JSONDecodeError:
             print("Error: Invalid JSON response from crt.sh")
         except Exception as e:
             print(f"Error fetching from crt.sh query: {str(e)}")
-        
-    
+
     async def dns_query(self):
         resolver = dns.resolver.Resolver()
         resolver.nameservers = ['8.8.8.8', '8.8.4.4']
         try:
-            results = resolver.resolve(f"*.{self.domain}", 'A')
-            for d in results:
-                sub_domain = str(d).rstrip('.')
-                if sub_domain.endswith(self.domain) and sub_domain != self.domain:
-                    self.subdomains.add(sub_domain)
+            try:
+                wildcard_results = resolver.resolve(f"*.{self.domain}", 'A')
+                self.wildcard_subdomains.add(f"*.{self.domain}")
+            except dns.resolver.NXDOMAIN:
+                pass
+            common_subdomains = [
+                'www', 'mail', 'ftp', 'localhost', 'webmail', 'smtp', 'pop', 'ns1',
+                'webdisk', 'ns2', 'cpanel', 'whm', 'autodiscover', 'autoconfig', 'm',
+                'imap', 'test', 'ns', 'blog', 'pop3', 'dev', 'www2', 'admin', 'forum',
+                'news', 'vpn', 'ns3', 'mail2', 'new', 'mysql', 'old', 'lists', 'support',
+                'mobile', 'mx', 'static', 'docs', 'beta', 'shop', 'sql', 'secure', 'demo',
+                'cp', 'calendar', 'wiki', 'web', 'media', 'email', 'images',
+                'img', 'www1', 'intranet', 'portal', 'video', 'sip', 'dns2', 'api', 'cdn',
+                'stats', 'dns1', 'ns4', 'www3', 'dns', 'search', 'staging', 'server', 'mx1',
+                'chat', 'wap', 'my', 'svn', 'mail1', 'sites', 'proxy', 'ads', 'host', 'crm',
+                'cms', 'backup', 'mx2', 'lyncdiscover', 'info', 'apps', 'download', 'remote',
+                'db', 'forums', 'store', 'relay', 'files', 'newsletter', 'app', 'live', 'owa',
+                'en', 'start', 'sms', 'office', 'exchange', 'ipv4'
+            ]
+            for subdomain in common_subdomains:
+                try:
+                    results = resolver.resolve(
+                        f"{subdomain}.{self.domain}", 'A')
+                    self.subdomains.add(f"{subdomain}.{self.domain}")
+                except Exception as e:
+                    pass  # Subdomain doesn't exist or other DNS error
         except Exception as e:
-            print(f"Error fetching from dns_query: {str(e)}")
-            
-    
+            print(f"Error in dns_query: {str(e)}")
+
     async def netcraft_query(self):
         url = f'https://searchdns.netcraft.com/?restriction=site+ends+with&host={
             self.domain}'
@@ -109,8 +127,7 @@ class SubDomainScrapper:
                     self.subdomains.add(sub_domain)
         except Exception as e:
             print(f"Error in netcraft query: {str(e)}")
-            
-    
+
     async def dns_dumpster_query(self):
         url = 'https://dnsdumpster.com/'
         try:
@@ -132,7 +149,7 @@ class SubDomainScrapper:
                     self.subdomains.add(i.strip())
         except Exception as e:
             print(f"Error in dns_dumpster query: {str(e)}")
-    
+
     async def virustotal_query(self):
         url = f'https://www.virustotal.com/ui/domains/{self.domain}/subdomains'
         try:
@@ -146,9 +163,9 @@ class SubDomainScrapper:
         except Exception as e:
             print(f"Error in VirusTotal query: {str(e)}")
 
-
     async def threatcrowd_query(self):
-        url = f'https://www.threatcrowd.org/searchApi/v2/domain/report/?domain={self.domain}'
+        url = f'https://www.threatcrowd.org/searchApi/v2/domain/report/?domain={
+            self.domain}'
         try:
             response = await self.session.get(url, headers=self.get_headers())
             data = response.json()
@@ -157,7 +174,7 @@ class SubDomainScrapper:
                     self.subdomains.add(subdomain)
         except Exception as e:
             print(f"Error in ThreatCrowd query: {str(e)}")
-    
+
     async def passivedns_query(self):
         url = f'https://api.sublist3r.com/search.php?domain={self.domain}'
         try:
@@ -168,16 +185,16 @@ class SubDomainScrapper:
                     self.subdomains.add(subdomain)
         except Exception as e:
             print(f"Error in PassiveDNS query: {str(e)}")
-    
+
     def get_all_subdomains(self) -> List[str]:
         return sorted(list(self.subdomains.union(self.wildcard_subdomains)))
-    
+
     async def run_all_query_async(self):
         tasks = [
             # self.search_engine_enumerator(),
-            self.crt_sh_query(),
+            # self.crt_sh_query(),
             # self.dns_query(),
-            # self.netcraft_query(),
+            self.netcraft_query(),
             # self.dns_dumpster_query(),
             # self.passivedns_query(),
             # self.threatcrowd_query(),
@@ -188,7 +205,7 @@ class SubDomainScrapper:
         return list(self.subdomains)
 
 
-async def get_subdomain_data(domain:str) -> Dict[str, List[str]]:
+async def get_subdomain_data(domain: str) -> Dict[str, List[str]]:
     try:
         parsed_domain = urlparse(f"http://{domain}").netloc
         res = SubDomainScrapper(parsed_domain)
@@ -198,7 +215,6 @@ async def get_subdomain_data(domain:str) -> Dict[str, List[str]]:
         all_subdomains = res.get_all_subdomains()
         return {
             "domain": domain,
-            # "subdomains": all_subdomains,
             "count": len(all_subdomains),
             "regular": sorted(list(res.subdomains)),
             "wildcards": sorted(list(res.wildcard_subdomains))
