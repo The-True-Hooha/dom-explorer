@@ -40,24 +40,40 @@ class SubDomainScrapper:
             ("https://www.bing.com/search?q={query}&go=Submit&first={page_no}", 'bing'),
             ('https://www.baidu.com/s?pn={page_no}&wd={query}&oq={query}', 'baidu')
         ]
+
         for search_engine_url, search_engine in engines:
             page_no = 1
             while page_no <= 5:
-                query = quote_plus(f"site:{self.domain} --www.{self.domain}")
+                query = quote_plus(f"site:{self.domain} -www.{self.domain}")
                 url = search_engine_url.format(query=query, page_no=page_no)
 
                 try:
-                    res = await self.session.get(url, headers=self.getHeaders())
-                    sub_domain = re.findall(
-                        r'(?<=//|\s)(\w+\.' + re.escape(self.domain) + ')', res.text)
-                    self.subdomains.update(sub_domain)
-                    page_no += 10 if search_engine in ['google',
-                                                       'bing', 'yahoo', 'baidu'] else 1
+                    logger.debug(f"Querying {search_engine} with URL: {url}")
+                    response = await self.session.get(url, headers=self.getHeaders())
+
+                    if response.status_code != 200:
+                        logger.warning(f"Unexpected status code {response.status_code} from {search_engine}")
+                        break
+                    subdomains = re.findall(
+                        r'(?<=//|\s)(\w+\.' + re.escape(self.domain) + ')', response.text)
+
+                    for subdomain in subdomains:
+                        if subdomain.startswith('*.'):
+                            self.wildcard_subdomains.add(subdomain)
+                        else:
+                            self.subdomains.add(subdomain)
+                    logger.info(f"Found {len(subdomains)} subdomains from {search_engine} on page {page_no}")
+                    page_no += 10 if search_engine in ['google','bing', 'yahoo', 'baidu'] else 1
+
+                except httpx.RequestError as e:
+                    logger.error(f"HTTP Request Error from {search_engine} search: {str(e)}")
+                    break
                 except Exception as e:
-                    print(f"Error from source {
-                          search_engine} search: {str(e)}")
+                    logger.error(f"Unexpected error from {search_engine} search: {str(e)}")
                     break
                 await asyncio.sleep(random.randint(2, 7))
+
+        logger.info(f"Search engine enumeration complete. Found {len(self.subdomains)} regular subdomains and {len(self.wildcard_subdomains)} wildcard subdomains")
 
     async def crt_sh_query(self):
         url = f"https://crt.sh/?q=%.{self.domain}&output=json"
