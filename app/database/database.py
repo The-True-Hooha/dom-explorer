@@ -1,8 +1,9 @@
-from sqlalchemy import create_engine, Boolean, Column, ForeignKey, Integer, String, DateTime
+from sqlalchemy import create_engine, Boolean, Column, ForeignKey, Integer, String, DateTime, Enum
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.sql import func
 from app.core.core import app_setting
+import enum
 
 SQLALCHEMY_DATABASE_URL = app_setting.DATABASE_URL
 
@@ -11,6 +12,11 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
+class RoleEnum(str, enum.Enum):
+    user = "user"
+    admin = "admin"
+    support = "support"
+    other = "other"
 
 class User(Base):
     __tablename__ = "user"
@@ -18,6 +24,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True)
     password = Column(String)
+    role = Column(Enum(RoleEnum), default=RoleEnum.user)
     domains = relationship("Domain", back_populates="user")
     createdDate = Column(DateTime(timezone=True), server_default=func.now())
     
