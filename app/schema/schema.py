@@ -55,7 +55,8 @@ class Token(BaseModel):
 
 
 class TokenData(BaseModel):
-    email: Optional[str] = None
+    token: str
+    expiresAt: datetime
 
 class UserResponse(UserBase):
     id: int
@@ -67,4 +68,20 @@ class UserResponse(UserBase):
     class ConfigDict:
         from_attributes = True
 
+class UserObj(UserBase):
+    id: int
+    createdDate: datetime
+    password: str
+    role: Optional[str] = None
+class CreateUserResponse(BaseModel):
+    message: str
+    user: UserObj
+    token: TokenData
 
+class LoginData(UserBase):
+    password: str
+    
+class LoginResponse(BaseModel):
+    message: str
+    token: TokenData
+    

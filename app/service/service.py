@@ -34,7 +34,11 @@ def login_user(db: Session, email: str, password: str):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="email or password incorrect"
         )
-    return user
+    token = create_access_token(data={"email": email})
+    return {
+        "message": "successfully logged in",
+        "token": token
+    }
 
 
 def create_access_token(data: dict, expiry: Optional[timedelta] = None):
@@ -42,11 +46,14 @@ def create_access_token(data: dict, expiry: Optional[timedelta] = None):
     if expiry:
         expire = datetime.utcnow() + expiry
     else:
-        expire = datetime.utcnow() + timedelta(minutes=6*60) # set the expiry to 6 hours
+        expire = datetime.utcnow() + timedelta(minutes=6*60)  # set the expiry to 6 hours
     to_encode.update({"exp": expire})
     token = jwt.encode(to_encode, app_setting.JWT_TOKEN,
                        algorithm=app_setting.ALGORITHM)
-    return token
+    return {
+        "token": token,
+        "expiresAt": expire
+    }
 
 
 async def get_auth_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_database)):
@@ -81,8 +88,9 @@ def create_new_user(db: Session, user: UserCreate):
     token = create_access_token(data={"email": created_user.email})
     db.add(created_user)
     db.commit()
-    db.refresh(created_user)    
+    db.refresh(created_user)
     return {
+        "message": "successfully created account",
         "user": created_user,
         "token": token
     }
