@@ -32,8 +32,9 @@ async def search_sub_domain(domain:str):
     data = await get_subdomain_data(domain)
     return data
 
+
 @router.post("/user")
-# response_model = UserResponse
+#  response_model=UserResponse
 def create_user(user: UserCreate, db: Session = Depends(get_database)):
     new_user = create_new_user(user=user, db=db)
     return new_user

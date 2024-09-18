@@ -43,7 +43,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
-    role: Optional[List[RoleEnum]] = None
+    role: Optional[str] = None
 
 class Token(BaseModel):
     access_token: str = Field(..., alias="accessToken")
