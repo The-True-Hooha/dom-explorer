@@ -5,9 +5,11 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.database.database import Base, engine
-from app.core.core import app_setting
+from app.core.core import app_setting, limiter
 from app.controllers.controllers import router as routes
 
 app = FastAPI(title=app_setting.APP_NAME, version="1.0.0",
@@ -15,11 +17,20 @@ app = FastAPI(title=app_setting.APP_NAME, version="1.0.0",
 
 logger = logging.getLogger(__name__)
 
+app.include_router(routes, prefix="/api/v1")
 
 Base.metadata.create_all(bind=engine)
 
-app.include_router(routes, prefix="/api/v1")
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
 
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={"detail": "Rate limit exceeded"},
+    )
 
 @app.exception_handler(RequestValidationError)
 def validation_exception_handler(request: Request, exception: RequestValidationError):
