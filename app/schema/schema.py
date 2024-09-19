@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field
-from typing import List, Optional
+from typing import List, Optional, Union, Optional, Any
 from datetime import datetime
 from app.database.database import RoleEnum
 
@@ -12,10 +12,9 @@ class SubDomainCreate(SubDomainBase):
     pass
 
 
-class SubDomainResponse(SubDomainBase):
-    id: int
-    createdDate: datetime
-    domain_id: int
+class SubDomainResponse(BaseModel):
+    regular: List[str] = []
+    wildcards: List[str] = []
 
     class ConfigDict:
         from_attributes = True
@@ -55,16 +54,46 @@ class Token(BaseModel):
 
 
 class TokenData(BaseModel):
-    email: Optional[str] = None
+    token: str
+    expiresAt: datetime
 
-class UserResponse(UserBase):
+
+class UserObj(UserBase):
     id: int
-    role: str
-    domains: List[DomainBase] = []
     createdDate: datetime
-    token: Optional[Token] = None
+    password: str
+    role: Optional[str] = None
+class CreateUserResponse(BaseModel):
+    message: str
+    user: UserObj
+    token: TokenData
+
+class LoginData(UserBase):
+    password: str
+    
+class LoginResponse(BaseModel):
+    message: str
+    token: TokenData
+    
+class ProfileDomain(BaseModel):
+    id: int
+    domain: str
+    isActive: bool
+    createdDate: datetime
+    sub_domain: List[SubDomainResponse] = []
+    
+class ApiResponseModel(BaseModel):
+    message: str
+    status_code: int
+    data: Optional[Union[Any, List[Any]]] = None
+    
+class ProfileResponse(BaseModel):
+    id: str
+    email: EmailStr
+    created_date: datetime
+    role: str
+    domains: List[ProfileDomain] = []
 
     class ConfigDict:
         from_attributes = True
-
-
+        
