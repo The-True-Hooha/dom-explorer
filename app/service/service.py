@@ -154,3 +154,7 @@ def map_user_with_domain_response(user: User) -> ProfileResponse:
             ) for domain in user.domains
         ]
     )
+    
+
+def get_user_domains(user: User, db: Session):
+    pass

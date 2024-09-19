@@ -29,8 +29,8 @@ def run_health_check(db: Session = Depends(get_database)):
 
 @router.get("/search", response_model=DomainResponse)
 @limiter.limit("5/minute")
-async def search_sub_domain(domain: str, request: Request):
-    data = await get_subdomain_data(domain)
+async def search_sub_domain(domain: str, request: Request, user: User = Depends(get_auth_user), db: Session = Depends(get_database)):
+    data = await get_subdomain_data(domain, db, user)
     return data
 
 
@@ -50,3 +50,8 @@ def handle_login_user(data: LoginData, request: Request, db: Session = Depends(g
 @limiter.limit("5/minute")
 def my_profile(request: Request, user: User = Depends(get_auth_user), db: Session = Depends(get_database)):
     return get_my_profile(user, db)
+
+@router.get("/domain/me")
+@limiter.limit("5/minute")
+def get_my_domain(request:Request, user:User = Depends(get_auth_user), db: Session = Depends(get_database)):
+    pass

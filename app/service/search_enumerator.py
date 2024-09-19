@@ -11,6 +11,8 @@ from datetime import datetime, timedelta
 from fastapi import FastAPI, Depends, HTTPException, status
 from typing import List, Dict, Set
 from urllib.parse import urlparse, quote_plus
+from app.database.database import get_database, User, Domain, SubDomain
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -317,12 +319,27 @@ class SubDomainScrapper:
         return list(self.subdomains)
 
 
-async def get_subdomain_data(domain: str) -> Dict[str, List[str]]:
+async def get_subdomain_data(domain: str, db: Session, user:User) -> Dict[str, List[str]]:
     try:
         parsed_domain = urlparse(f"http://{domain}").netloc
         res = SubDomainScrapper(parsed_domain)
         data = await res.run_all_query_async()
-
+        
+        find_domain = db.query(Domain).filter(Domain.domain_name == parsed_domain, Domain.user_id == user.id).first()
+        if not find_domain:
+            find_domain = Domain(
+                domain_name= parsed_domain, user_id = user.id
+            )
+            db.add(find_domain)
+            db.flush()
+        
+        all_subs = list(res.subdomains) + list(res.wildcard_subdomains)
+        for i in all_subs:
+            sub = db.query(SubDomain).filter(SubDomain.name == i, SubDomain.domain_id == find_domain.id).first()
+            if not sub:
+                sub = SubDomain(name=i, domain_id=find_domain.id)
+                db.add(sub)
+        db.commit()
         return {
             "domain": domain,
             "count": len(res.subdomains)+len(res.wildcard_subdomains),
