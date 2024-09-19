@@ -111,3 +111,12 @@ class PaginatedSubDomainsResponse(BaseModel):
     total_subdomains: int
     skip: int
     limit: int
+
+
+class SubdomainSearchResponse(BaseModel):
+    domain: str
+    total_count: int
+    regular: List[str]
+    wildcards: List[str]
+    new_subdomains: List[str]
+    new_count: bool

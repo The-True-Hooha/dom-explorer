@@ -6,9 +6,9 @@ from typing import List
 from datetime import datetime
 from app.core.core import limiter
 
-from app.schema.schema import UserCreate, DomainResponse, Token, CreateUserResponse, LoginData, LoginResponse, PaginatedDomainsResponse, PaginatedSubDomainsResponse
+from app.schema.schema import UserCreate, DomainResponse, Token, CreateUserResponse, LoginData, LoginResponse, PaginatedDomainsResponse, PaginatedSubDomainsResponse, SubdomainSearchResponse
 from app.database.database import User, Domain, SubDomain, get_database
-from app.service.search_enumerator import get_subdomain_data
+from app.service.search_enumerator import get_subdomain_data, get_updated_domains
 from app.service.service import create_new_user, create_access_token, get_auth_user, isAdmin, get_user, login_user, get_my_profile, get_user_domain_with_subdomains, get_user_domains
 
 router = APIRouter()
@@ -91,3 +91,10 @@ async def read_user_domain(
         skip=skip,
         limit=limit
     )
+
+
+@router.get("/domain/check-updates")
+@limiter.limit("5/minute")
+async def get_domain_updates(request:Request, domain:str, user:User = Depends(get_auth_user), db:Session = Depends(get_database)):
+    data = await get_updated_domains(db=db, domain=domain, user=user)
+    return SubdomainSearchResponse(**data)

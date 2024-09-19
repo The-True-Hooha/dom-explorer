@@ -54,7 +54,8 @@ class SubDomainScrapper:
                     response = await self.session.get(url, headers=self.getHeaders())
 
                     if response.status_code != 200:
-                        logger.warning(f"Unexpected status code {response.status_code} from {search_engine}")
+                        logger.warning(f"Unexpected status code {
+                                       response.status_code} from {search_engine}")
                         break
                     subdomains = re.findall(
                         r'(?<=//|\s)(\w+\.' + re.escape(self.domain) + ')', response.text)
@@ -64,18 +65,23 @@ class SubDomainScrapper:
                             self.wildcard_subdomains.add(subdomain)
                         else:
                             self.subdomains.add(subdomain)
-                    logger.info(f"Found {len(subdomains)} subdomains from {search_engine} on page {page_no}")
-                    page_no += 10 if search_engine in ['google','bing', 'yahoo', 'baidu'] else 1
+                    logger.info(f"Found {len(subdomains)} subdomains from {
+                                search_engine} on page {page_no}")
+                    page_no += 10 if search_engine in ['google',
+                                                       'bing', 'yahoo', 'baidu'] else 1
 
                 except httpx.RequestError as e:
-                    logger.error(f"HTTP Request Error from {search_engine} search: {str(e)}")
+                    logger.error(f"HTTP Request Error from {
+                                 search_engine} search: {str(e)}")
                     break
                 except Exception as e:
-                    logger.error(f"Unexpected error from {search_engine} search: {str(e)}")
+                    logger.error(f"Unexpected error from {
+                                 search_engine} search: {str(e)}")
                     break
                 await asyncio.sleep(random.randint(2, 7))
 
-        logger.info(f"Search engine enumeration complete. Found {len(self.subdomains)} regular subdomains and {len(self.wildcard_subdomains)} wildcard subdomains")
+        logger.info(f"Search engine enumeration complete. Found {len(
+            self.subdomains)} regular subdomains and {len(self.wildcard_subdomains)} wildcard subdomains")
 
     async def crt_sh_query(self):
         url = f"https://crt.sh/?q=%.{self.domain}&output=json"
@@ -319,23 +325,25 @@ class SubDomainScrapper:
         return list(self.subdomains)
 
 
-async def get_subdomain_data(domain: str, db: Session, user:User) -> Dict[str, List[str]]:
+async def get_subdomain_data(domain: str, db: Session, user: User) -> Dict[str, List[str]]:
     try:
         parsed_domain = urlparse(f"http://{domain}").netloc
         res = SubDomainScrapper(parsed_domain)
         data = await res.run_all_query_async()
-        
-        find_domain = db.query(Domain).filter(Domain.domain_name == parsed_domain, Domain.user_id == user.id).first()
+
+        find_domain = db.query(Domain).filter(
+            Domain.domain_name == parsed_domain, Domain.user_id == user.id).first()
         if not find_domain:
             find_domain = Domain(
-                domain_name= parsed_domain, user_id = user.id
+                domain_name=parsed_domain, user_id=user.id
             )
             db.add(find_domain)
             db.flush()
-        
+
         all_subs = list(res.subdomains) + list(res.wildcard_subdomains)
         for i in all_subs:
-            sub = db.query(SubDomain).filter(SubDomain.name == i, SubDomain.domain_id == find_domain.id).first()
+            sub = db.query(SubDomain).filter(SubDomain.name == i,
+                                             SubDomain.domain_id == find_domain.id).first()
             if not sub:
                 sub = SubDomain(name=i, domain_id=find_domain.id)
                 db.add(sub)
@@ -347,5 +355,51 @@ async def get_subdomain_data(domain: str, db: Session, user:User) -> Dict[str, L
             "wildcards": sorted(list(res.wildcard_subdomains))
         }
     except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"An error occurred: {str(e)}")
+
+
+def get_existing_subdomains(db: Session, domain_name: str, user_id: int) -> Set[str]:
+    domain = db.query(Domain).filter(Domain.domain_name ==
+                                     domain_name, Domain.user_id == user_id).first()
+    if domain:
+        return set(subdomain.name for subdomain in domain.sub_domains)
+    return set()
+
+
+async def get_updated_domains(domain: str, db: Session, user: User) -> Dict[str, any]:
+    try:
+        parsed_domain = urlparse(f"http://{domain}").netloc
+        res = SubDomainScrapper(parsed_domain)
+        data = await res.run_all_query_async()
+
+        existing_subdomains = get_existing_subdomains(
+            db, parsed_domain, user.id)
+        all_subdomains = set(res.subdomains) | set(res.wildcard_subdomains)
+        new_subdomains = all_subdomains - existing_subdomains
+
+        db_domain = db.query(Domain).filter(
+            Domain.domain_name == parsed_domain, Domain.user_id == user.id).first()
+        if not db_domain:
+            db_domain = Domain(domain_name=parsed_domain, user_id=user_id)
+            db.add(db_domain)
+            db.flush()
+
+        for subdomain in new_subdomains:
+            db_subdomain = SubDomain(name=subdomain, domain_id=db_domain.id)
+            db.add(db_subdomain)
+
+        db.commit()
+
+        return {
+            "domain": domain,
+            "total_count": len(all_subdomains),
+            "regular": sorted(list(res.subdomains)),
+            "wildcards": sorted(list(res.wildcard_subdomains)),
+            "new_subdomains": sorted(list(new_subdomains)),
+            "new_count": len(new_subdomains) > 0
+        }
+    except Exception as e:
+        db.rollback()
         raise HTTPException(
             status_code=500, detail=f"An error occurred: {str(e)}")
