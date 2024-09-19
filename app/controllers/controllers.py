@@ -34,7 +34,7 @@ async def search_sub_domain(domain: str, request: Request, user: User = Depends(
     return data
 
 
-@router.post("/user", response_model=CreateUserResponse)
+@router.post("/signup", response_model=CreateUserResponse)
 @limiter.limit("5/minute")
 def create_user(user: UserCreate, request: Request, db: Session = Depends(get_database)):
     new_user = create_new_user(user=user, db=db)
