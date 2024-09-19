@@ -5,10 +5,10 @@ from pydantic import BaseModel
 from typing import List
 from datetime import datetime
 
-from app.schema.schema import UserCreate, UserResponse, DomainResponse, Token, CreateUserResponse, LoginData, LoginResponse
+from app.schema.schema import UserCreate, DomainResponse, Token, CreateUserResponse, LoginData, LoginResponse
 from app.database.database import User, Domain, SubDomain, get_database
 from app.service.search_enumerator import get_subdomain_data
-from app.service.service import create_new_user, create_access_token, get_auth_user, isAdmin, get_user, login_user
+from app.service.service import create_new_user, create_access_token, get_auth_user, isAdmin, get_user, login_user, get_my_profile
 
 router = APIRouter()
 
@@ -42,3 +42,8 @@ def create_user(user: UserCreate, db: Session = Depends(get_database)):
 @router.post("/login", response_model=LoginResponse)
 def handle_login_user(data: LoginData, db: Session = Depends(get_database)):
     return login_user(db, email=data.email, password=data.password)
+
+@router.get("/profile/me")
+def my_profile(user: User = Depends(get_auth_user), db: Session = Depends(get_database)):
+    print("does anything happen here", db)
+    return get_my_profile(user, db)

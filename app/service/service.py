@@ -1,13 +1,20 @@
+import bcrypt
+import logging
+
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
-import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
+
+
 from app.core.core import app_setting
-from app.schema.schema import TokenData, UserCreate
-from app.database.database import get_database, User
+from app.schema.schema import TokenData, UserCreate, UserBase, ApiResponseModel, ProfileResponse
+from app.database.database import get_database, User, Domain, SubDomain
+
+
+logger = logging.getLogger(__name__)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -35,6 +42,7 @@ def login_user(db: Session, email: str, password: str):
             detail="email or password incorrect"
         )
     token = create_access_token(data={"email": email})
+    logger.info(f"new user login from {email}")
     return {
         "message": "successfully logged in",
         "token": token
@@ -63,12 +71,15 @@ async def get_auth_user(token: str = Depends(oauth2_scheme), db: Session = Depen
         headers={"WWW-Authenticate": "Bearer"}
     )
     try:
-        payload = jwt.decode(token=app_setting.JWT_TOKEN,
-                             algorithms=[app_setting.ALGORITHM])
+        payload = jwt.decode(
+            token,
+            app_setting.JWT_TOKEN,
+            algorithms=[app_setting.ALGORITHM]
+        )
         email: str = payload.get("email")
         if email is None:
             raise credentials_exception
-        token_data = TokenData(email=email)
+        token_data = UserBase(email=email)
     except JWTError:
         raise credentials_exception
     user = get_user(db, email=token_data.email)
@@ -89,12 +100,12 @@ def create_new_user(db: Session, user: UserCreate):
     db.add(created_user)
     db.commit()
     db.refresh(created_user)
+    logger.info(f"new account created by {created_user.email}")
     return {
         "message": "successfully created account",
         "user": created_user,
         "token": token
     }
-
 
 def isAdmin(user: User = Depends(get_auth_user)):
     if user.role != "admin":
@@ -102,3 +113,42 @@ def isAdmin(user: User = Depends(get_auth_user)):
             status_code=403, detail="Not Authorized"
         )
     return user
+
+def get_user_relation(db: Session, email:str):
+    return db.query(User).options(
+        joinedload(User.domains).joinedload(Domain.sub_domains)
+    ).filter(User.email == email).first()
+
+
+def get_my_profile(user: User, db: Session):
+    logger.info(f"getting user profile {user.email}")
+    data:User = get_user_relation(db, email=user.email)
+    map_profile = map_user_with_domain_response(data)
+    return ApiResponseModel(
+        message = "successful",
+        status_code = status.HTTP_200_OK,
+        data = map_profile
+    )
+
+
+def map_user_with_domain_response(user: User) -> ProfileResponse:
+    return ProfileResponse(
+        id=str(user.id),
+        email=user.email,
+        role = user.role,
+        created_date = user.createdDate,
+        domains=[
+            ProfileDomain(
+                id=domain.id,
+                domain=domain.domain_name,
+                isActive=domain.isActive,
+                createdDate=domain.createdDate,
+                sub_domain=[
+                    SubDomainResponse(
+                        regular=sub_domain.regular,
+                        wildcards=sub_domain.wildcards,
+                    ) for sub_domain in domain.sub_domains
+                ]
+            ) for domain in user.domains
+        ]
+    )
