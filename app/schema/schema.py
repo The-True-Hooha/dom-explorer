@@ -97,3 +97,17 @@ class ProfileResponse(BaseModel):
     class ConfigDict:
         from_attributes = True
         
+
+class PaginatedDomainsResponse(BaseModel):
+    domains: List[DomainResponse]
+    total: int
+    skip: int
+    limit: int
+
+
+class PaginatedSubDomainsResponse(BaseModel):
+    domain: DomainResponse
+    sub_domains: List[SubDomainResponse]
+    total_subdomains: int
+    skip: int
+    limit: int

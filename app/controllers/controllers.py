@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, status, Request
+from fastapi import APIRouter, HTTPException, Depends, status, Request, Query
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 from pydantic import BaseModel
@@ -6,10 +6,10 @@ from typing import List
 from datetime import datetime
 from app.core.core import limiter
 
-from app.schema.schema import UserCreate, DomainResponse, Token, CreateUserResponse, LoginData, LoginResponse
+from app.schema.schema import UserCreate, DomainResponse, Token, CreateUserResponse, LoginData, LoginResponse, PaginatedDomainsResponse, PaginatedSubDomainsResponse
 from app.database.database import User, Domain, SubDomain, get_database
 from app.service.search_enumerator import get_subdomain_data
-from app.service.service import create_new_user, create_access_token, get_auth_user, isAdmin, get_user, login_user, get_my_profile
+from app.service.service import create_new_user, create_access_token, get_auth_user, isAdmin, get_user, login_user, get_my_profile, get_user_domain_with_subdomains, get_user_domains
 
 router = APIRouter()
 
@@ -51,7 +51,43 @@ def handle_login_user(data: LoginData, request: Request, db: Session = Depends(g
 def my_profile(request: Request, user: User = Depends(get_auth_user), db: Session = Depends(get_database)):
     return get_my_profile(user, db)
 
-@router.get("/domain/me")
-@limiter.limit("5/minute")
-def get_my_domain(request:Request, user:User = Depends(get_auth_user), db: Session = Depends(get_database)):
-    pass
+
+@router.get("/domains", response_model=PaginatedDomainsResponse)
+@limiter.limit("10/minute")
+async def get_user_domains(
+    request:Request,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=100),
+    current_user: User = Depends(get_auth_user),
+    db: Session = Depends(get_database)
+):
+    domains, total = get_user_domains(db, current_user, skip, limit)
+    return PaginatedDomainsResponse(
+        domains=domains,
+        total=total,
+        skip=skip,
+        limit=limit
+    )
+
+
+@router.get("/domains/{name}", response_model=PaginatedSubDomainsResponse)
+@limiter.limit("10/minute")
+async def read_user_domain(
+    request: Request,
+    name: str,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=100),
+    current_user: User = Depends(get_auth_user),
+    db: Session = Depends(get_database)
+):
+    domain, total_subdomains = get_user_domain_with_subdomains(
+        db, current_user, name, skip, limit)
+    if domain is None:
+        raise HTTPException(status_code=404, detail="Domain cannot be found")
+    return PaginatedSubDomainsResponse(
+        domain=domain,
+        sub_domains=domain.sub_domains,
+        total_subdomains=total_subdomains,
+        skip=skip,
+        limit=limit
+    )

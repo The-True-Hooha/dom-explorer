@@ -2,7 +2,7 @@ import bcrypt
 import logging
 
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, List, Tuple
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -156,5 +156,28 @@ def map_user_with_domain_response(user: User) -> ProfileResponse:
     )
     
 
-def get_user_domains(user: User, db: Session):
-    pass
+def get_domain_by_id(user: User, db: Session) -> Domain:
+    return db.query(Domain).filter(Domain.user_id == user_id).all()
+
+
+def get_user_domains(db: Session, user: User, skip: int = 0, limit: int = 10) -> Tuple[List[Domain], int]:
+    query = db.query(Domain).filter(Domain.user_id == user.id)
+    total = query.count()
+    domains = query.offset(skip).limit(limit).all()
+    return domains, total
+
+
+def get_user_domain_with_subdomains(db: Session, user: User, domain_name: str, skip: int = 0, limit: int = 10) -> Tuple[Domain, int]:
+    domain:Domain = db.query(Domain).filter(
+        Domain.domain_name == domain_name,
+        Domain.user_id == user.id
+    ).first()
+
+    if domain:
+        subdomains_query = db.query(SubDomain).filter(
+            SubDomain.domain_id == domain.id)
+        total_subdomains = subdomains_query.count()
+        subdomains = subdomains_query.offset(skip).limit(limit).all()
+        domain.sub_domains = subdomains
+        return domain, total_subdomains
+    return None, 0
