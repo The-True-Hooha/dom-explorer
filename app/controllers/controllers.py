@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Request
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 from pydantic import BaseModel
 from typing import List
 from datetime import datetime
+from app.core.core import limiter
 
 from app.schema.schema import UserCreate, DomainResponse, Token, CreateUserResponse, LoginData, LoginResponse
 from app.database.database import User, Domain, SubDomain, get_database
@@ -27,21 +28,25 @@ def run_health_check(db: Session = Depends(get_database)):
 
 
 @router.get("/search", response_model=DomainResponse)
-async def search_sub_domain(domain: str):
+@limiter.limit("5/minute")
+async def search_sub_domain(domain: str, request: Request):
     data = await get_subdomain_data(domain)
     return data
 
 
 @router.post("/user", response_model=CreateUserResponse)
-def create_user(user: UserCreate, db: Session = Depends(get_database)):
+@limiter.limit("5/minute")
+def create_user(user: UserCreate, request: Request, db: Session = Depends(get_database)):
     new_user = create_new_user(user=user, db=db)
     return new_user
 
 
 @router.post("/login", response_model=LoginResponse)
-def handle_login_user(data: LoginData, db: Session = Depends(get_database)):
+@limiter.limit("5/minute")
+def handle_login_user(data: LoginData, request: Request, db: Session = Depends(get_database)):
     return login_user(db, email=data.email, password=data.password)
 
 @router.get("/profile/me")
-def my_profile(user: User = Depends(get_auth_user), db: Session = Depends(get_database)):
+@limiter.limit("5/minute")
+def my_profile(request: Request, user: User = Depends(get_auth_user), db: Session = Depends(get_database)):
     return get_my_profile(user, db)

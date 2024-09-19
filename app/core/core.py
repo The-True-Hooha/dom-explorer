@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 class AppSetting(BaseSettings):
     APP_NAME: str
@@ -12,3 +13,6 @@ class AppSetting(BaseSettings):
 
 
 app_setting = AppSetting()
+
+
+limiter = Limiter(key_func=get_remote_address)
