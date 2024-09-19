@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section id="search">
+    <h2>Search Subdomains</h2>
+    <form id="searchForm">
+        <input type="text" id="domainInput" placeholder="Enter a domain" required>
+        <button type="submit">Search</button>
+    </form>
+</section>
+
+<section id="results">
+    <h2>Results</h2>
+    <ul id="subdomainList"></ul>
+</section>
+{% endblock %}
