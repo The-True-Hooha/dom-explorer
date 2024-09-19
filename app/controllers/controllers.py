@@ -28,7 +28,6 @@ def run_health_check(db: Session = Depends(get_database)):
 
 @router.get("/search", response_model=DomainResponse)
 async def search_sub_domain(domain: str):
-    print('hello world', "from the east", domain)
     data = await get_subdomain_data(domain)
     return data
 
@@ -45,5 +44,4 @@ def handle_login_user(data: LoginData, db: Session = Depends(get_database)):
 
 @router.get("/profile/me")
 def my_profile(user: User = Depends(get_auth_user), db: Session = Depends(get_database)):
-    print("does anything happen here", db)
     return get_my_profile(user, db)
