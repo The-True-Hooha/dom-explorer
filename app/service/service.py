@@ -67,7 +67,7 @@ def create_access_token(data: dict, expiry: Optional[timedelta] = None):
 async def get_auth_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_database)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="oops, jwt invalid",
+        detail="oops, seems you are not authorized",
         headers={"WWW-Authenticate": "Bearer"}
     )
     try:
@@ -107,6 +107,7 @@ def create_new_user(db: Session, user: UserCreate):
         "token": token
     }
 
+
 def isAdmin(user: User = Depends(get_auth_user)):
     if user.role != "admin":
         raise HTTPException(
@@ -114,7 +115,8 @@ def isAdmin(user: User = Depends(get_auth_user)):
         )
     return user
 
-def get_user_relation(db: Session, email:str):
+
+def get_user_relation(db: Session, email: str):
     return db.query(User).options(
         joinedload(User.domains).joinedload(Domain.sub_domains)
     ).filter(User.email == email).first()
@@ -122,12 +124,12 @@ def get_user_relation(db: Session, email:str):
 
 def get_my_profile(user: User, db: Session):
     logger.info(f"getting user profile {user.email}")
-    data:User = get_user_relation(db, email=user.email)
+    data: User = get_user_relation(db, email=user.email)
     map_profile = map_user_with_domain_response(data)
     return ApiResponseModel(
-        message = "successful",
-        status_code = status.HTTP_200_OK,
-        data = map_profile
+        message="successful",
+        status_code=status.HTTP_200_OK,
+        data=map_profile
     )
 
 
@@ -135,8 +137,8 @@ def map_user_with_domain_response(user: User) -> ProfileResponse:
     return ProfileResponse(
         id=str(user.id),
         email=user.email,
-        role = user.role,
-        created_date = user.createdDate,
+        role=user.role,
+        created_date=user.createdDate,
         domains=[
             ProfileDomain(
                 id=domain.id,
