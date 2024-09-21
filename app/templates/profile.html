@@ -1,16 +1,22 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section id="search">
-    <h2>Search Subdomains</h2>
-    <form id="searchForm">
-        <input type="text" id="domainInput" placeholder="Enter a domain" required>
-        <button type="submit">Search</button>
-    </form>
-</section>
-
-<section id="results">
-    <h2>Results</h2>
-    <ul id="subdomainList"></ul>
+<section class="profile-section">
+    <div class="container">
+        <h2>Welcome, {{ user.username }}!</h2>
+        <div class="profile-info">
+            <p><strong>Email:</strong> {{ user.email }}</p>
+            <p><strong>Member since:</strong> {{ user.created_at.strftime('%B %d, %Y') }}</p>
+        </div>
+        <h3>Your Recent Searches</h3>
+        <ul class="search-history">
+            {% for search in user.recent_searches %}
+            <li>
+                <span class="domain">{{ search.domain }}</span>
+                <span class="date">{{ search.date.strftime('%Y-%m-%d %H:%M') }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
 </section>
 {% endblock %}
