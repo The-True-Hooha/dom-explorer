@@ -1,16 +1,76 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="keywords" content="domain explorer, subdomain finder, web security" />
+    <meta name="description" content="Dom Explorer - Your tool for discovering and managing subdomains" />
+    <meta name="author" content="Your Name" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dom Explorer</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Dom Explorer</h1>
+            <nav>
+                <ul>
+                    <li><a href="/">Home</a></li>
+                    <li><a href="/profile">Profile</a></li>
+                    <li><a href="#" id="loginBtn">Login</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
 
-{% block content %}
-<section id="search">
-    <h2>Search Subdomains</h2>
-    <form id="searchForm">
-        <input type="text" id="domainInput" placeholder="Enter a domain" required>
-        <button type="submit">Search</button>
-    </form>
-</section>
+    <main>
+        <section class="hero">
+            <div class="container">
+                <h2>Discover and Manage Subdomains</h2>
+                <p>Uncover hidden subdomains and enhance your web security</p>
+                <form id="searchForm" class="search-form">
+                    <input type="text" id="domainInput" placeholder="Enter a domain (e.g., example.com)" required>
+                    <button type="submit">Search</button>
+                </form>
+            </div>
+        </section>
 
-<section id="results">
-    <h2>Results</h2>
-    <ul id="subdomainList"></ul>
-</section>
-{% endblock %}
+        <section class="features">
+            <div class="container">
+                <h3>Features</h3>
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <h4>Subdomain Discovery</h4>
+                        <p>Quickly find all subdomains associated with a given domain.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h4>User Dashboard</h4>
+                        <p>Manage and track your subdomain searches with ease.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h4>Security Insights</h4>
+                        <p>Get valuable insights into potential security vulnerabilities.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="results" class="results hidden">
+            <div class="container">
+                <h3>Search Results</h3>
+                <ul id="subdomainList"></ul>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2023 Dom Explorer</p>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', path='js/api.js') }}"></script>
+    <script src="{{ url_for('static', path='js/main.js') }}"></script>
+</body>
+</html>

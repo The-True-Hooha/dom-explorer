@@ -1,8 +1,12 @@
 import uvicorn
 import logging
+import mimetypes
+
+mimetypes.add_type('application/javascript', '.js')
+mimetypes.add_type('text/css', '.css')
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -26,13 +30,13 @@ Base.metadata.create_all(bind=engine)
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="index.html")
 
 @app.get("/profile")
 async def user_profile(request: Request):
