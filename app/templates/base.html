@@ -3,30 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{% block description %}Dom Explorer - Your tool for discovering and managing subdomains{% endblock %}">
+    <meta name="keywords" content="{% block keywords %}domain explorer, subdomain finder, web security{% endblock %}">
+    <meta name="author" content="Your Name">
     <title>{% block title %}Dom Explorer{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <header>
-        <h1>Dom Explorer</h1>
-        <nav>
-            <ul>
-                <li><a href="/">Home</a></li>
-                <li><a href="/profile">Profile</a></li>
-                <li><a href="#" id="loginBtn">Login</a></li>
-            </ul>
-        </nav>
-    </header>
+    <div class="page-wrapper">
+        <header>
+            <div class="container">
+                <h1>Dom Explorer</h1>
+                <nav>
+                    <ul>
+                        <li><a href="/">Home</a></li>
+                        <li><a href="/profile">Profile</a></li>
+                        <li><a href="/login">Login</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </header>
 
-    <main>
-        {% block content %}{% endblock %}
-    </main>
+        <main>
+            {% block content %}{% endblock %}
+        </main>
 
-    <footer>
-        <p>&copy; 2023 Dom Explorer</p>
-    </footer>
+        <footer>
+            <div class="container">
+                <p>&copy; {{ current_year }} Dom Explorer</p>
+            </div>
+        </footer>
+    </div>
 
-    <script src="{{ url_for('static', path='/js/api.js') }}"></script>
-    <script src="{{ url_for('static', path='/js/main.js') }}"></script>
+    <script src="{{ url_for('static', path='js/api.js') }}"></script>
+    <script src="{{ url_for('static', path='js/main.js') }}"></script>
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -1,16 +1,47 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section id="search">
-    <h2>Search Subdomains</h2>
-    <form id="searchForm">
-        <input type="text" id="domainInput" placeholder="Enter a domain" required>
-        <button type="submit">Search</button>
-    </form>
+<section class="hero">
+    <div class="container">
+        <h2>Discover and Manage Subdomains</h2>
+        <p>Uncover hidden subdomains and enhance your web security</p>
+        <form id="searchForm" class="search-form">
+            <input type="text" id="domainInput" placeholder="Enter a domain (e.g., example.com)" required>
+            <button type="submit">Search</button>
+        </form>
+    </div>
 </section>
 
-<section id="results">
-    <h2>Results</h2>
-    <ul id="subdomainList"></ul>
+<section class="features">
+    <div class="container">
+        <h3>Features</h3>
+        <div class="feature-grid">
+            <div class="feature-item">
+                <h4>Subdomain Discovery</h4>
+                <p>Quickly find all subdomains associated with a given domain.</p>
+            </div>
+            <div class="feature-item">
+                <h4>User Dashboard</h4>
+                <p>Manage and track your subdomain searches with ease.</p>
+            </div>
+            <div class="feature-item">
+                <h4>Security Insights</h4>
+                <p>Get valuable insights into potential security vulnerabilities.</p>
+            </div>
+        </div>
+    </div>
 </section>
+
+<section id="results" class="results hidden">
+    <div class="container">
+        <h3>Search Results</h3>
+        <ul id="subdomainList"></ul>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Any additional JavaScript specific to the index page can go here
+</script>
 {% endblock %}
