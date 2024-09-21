@@ -1,9 +1,5 @@
 import uvicorn
 import logging
-import mimetypes
-
-mimetypes.add_type('application/javascript', '.js')
-mimetypes.add_type('text/css', '.css')
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, HTMLResponse
@@ -13,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+from datetime import datetime
 
 from app.database.database import Base, engine
 from app.core.core import app_setting, limiter
@@ -30,13 +27,14 @@ Base.metadata.create_all(bind=engine)
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
 
+
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    return templates.TemplateResponse(request=request, name="index.html")
+    return templates.TemplateResponse(request=request, name="index.html", context = {"current_year": datetime.now().year})
 
 @app.get("/profile")
 async def user_profile(request: Request):
@@ -77,6 +75,18 @@ async def general_exception_handler(request: Request, exception: Exception):
             "path": request.url.path
         },
     )
+    
+# remove when not in production
+@app.middleware("http")
+async def add_no_cache_headers(request: Request, call_next):
+    response = await call_next(request)
+    if isinstance(response, HTMLResponse):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
 
+
+        
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
