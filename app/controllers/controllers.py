@@ -87,18 +87,18 @@ async def get_user_domains(
     )
 
 
-@router.get("/domains/{name}", response_model=PaginatedSubDomainsResponse)
+@router.get("/domains/{id}", response_model=PaginatedSubDomainsResponse)
 @limiter.limit("10/minute")
 async def read_user_domain(
     request: Request,
-    name: str,
+    id: int,
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
     current_user: User = Depends(get_user_from_cookie),
     db: Session = Depends(get_database)
 ):
     domain, total_subdomains = get_user_domain_with_subdomains(
-        db, current_user, name, skip, limit)
+        db, current_user, id, skip, limit)
     if domain is None:
         raise HTTPException(status_code=404, detail="Domain cannot be found")
     return PaginatedSubDomainsResponse(

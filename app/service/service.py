@@ -182,9 +182,9 @@ def get_user_domains(db: Session, user: User, skip: int = 0, limit: int = 10) ->
     return domains, total
 
 
-def get_user_domain_with_subdomains(db: Session, user: User, domain_name: str, skip: int = 0, limit: int = 10) -> Tuple[Domain, int]:
+def get_user_domain_with_subdomains(db: Session, user: User, id: int, skip: int = 0, limit: int = 10) -> Tuple[Domain, int]:
     domain:Domain = db.query(Domain).filter(
-        Domain.domain_name == domain_name,
+        Domain.id == id,
         Domain.user_id == user.id
     ).first()
 
