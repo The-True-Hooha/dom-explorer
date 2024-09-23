@@ -14,17 +14,22 @@ async function searchSubdomains(domain) {
   return response.json();
 }
 
-async function login(username, password) {
-  const response = await fetch("/api/v1/login", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: `username=${encodeURIComponent(
-      username
-    )}&password=${encodeURIComponent(password)}`,
-    credentials: "include",
-  });
-  if (!response.ok) throw new Error("Failed to login");
-  return response.json();
+
+
+async function RegisterApi(email, password) {
+  try {
+    const data = await fetch("/api/v1/signup", {
+      headers: AuthHeaders,
+    });
+  } catch (err) {
+    throw err;
+  }
 }
+
+function AuthHeaders() {
+  return {
+    "Content-Type": "application/json",
+  };
+}
+
+

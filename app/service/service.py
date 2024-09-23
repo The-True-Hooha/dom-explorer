@@ -7,6 +7,7 @@ from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session, joinedload
+from fastapi.responses import RedirectResponse
 
 
 from app.core.core import app_setting
@@ -47,7 +48,7 @@ def login_user(db: Session, email: str, password: str):
         "message": "successfully logged in",
         "token": token
     }
-
+    
 
 def create_access_token(data: dict, expiry: Optional[timedelta] = None):
     to_encode = data.copy()
@@ -71,10 +72,12 @@ async def get_user_from_cookie(req:Request, db:Session = Depends(get_database)):
     )
     access_token = req.cookies.get("dom_explorer")
     if not access_token:
-        raise credentials_exception
-    token = access_token.split()[1]
-    return get_auth_user(db=db, token=token)
-    pass
+        print(access_token)
+        RedirectResponse(url="/login")
+    else:
+        # raise credentials_exception
+        token = access_token.split()[1]
+        return await get_auth_user(db=db, token=token)
 
 async def get_auth_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_database)):
     credentials_exception = HTTPException(

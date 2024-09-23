@@ -33,7 +33,12 @@ class User(Base):
     role = Column(Enum(RoleEnum), default=RoleEnum.user)
     domains = relationship("Domain", back_populates="user")
     createdDate = Column(DateTime, server_default=func.now())
-
+    
+    def __str__(self):
+        return f"User(id={self.id}, email='{self.email}', role='{self.role}', createdDate='{self.createdDate}', domains='{self.domains[:5]}'),"
+    
+    def __repr__(self):
+        return self.__str__()
 
 class Domain(Base):
     __tablename__ = "domain"
@@ -46,6 +51,12 @@ class Domain(Base):
     user = relationship("User", back_populates="domains")
     createdDate = Column(DateTime(timezone=True),
                          default=datetime.datetime.utcnow)
+    
+    def __str__(self):
+        return f"Domain(id={self.id}, name='{self.domain_name}', active={self.isActive}, user_id={self.user_id}, createdDate={self.createdDate})"
+
+    def __repr__(self):
+        return self.__str__()
 
 
 class SubDomain(Base):
@@ -57,6 +68,12 @@ class SubDomain(Base):
     name = Column(String)
     createdDate = Column(DateTime(timezone=True),
                          default=datetime.datetime.utcnow)
+    
+    def __str__(self):
+        return f"SubDomain(id={self.id}, name='{self.name}', domain_id={self.domain_id})"
+
+    def __repr__(self):
+        return self.__str__()
 
 
 def get_database():

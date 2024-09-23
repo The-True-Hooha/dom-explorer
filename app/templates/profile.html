@@ -1,22 +1,53 @@
 {% extends "base.html" %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/profile.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+{% endblock %}
+
 {% block content %}
 <section class="profile-section">
     <div class="container">
-        <h2>Welcome, {{ user.username }}!</h2>
         <div class="profile-info">
+            <h2>User Profile</h2>
             <p><strong>Email:</strong> {{ user.email }}</p>
-            <p><strong>Member since:</strong> {{ user.created_at.strftime('%B %d, %Y') }}</p>
+            <p><strong>Member since:</strong> {{ user.createdDate.strftime('%B %d, %Y') }}</p>
         </div>
+
         <h3>Your Recent Searches</h3>
-        <ul class="search-history">
-            {% for search in user.recent_searches %}
-            <li>
-                <span class="domain">{{ search.domain }}</span>
-                <span class="date">{{ search.date.strftime('%Y-%m-%d %H:%M') }}</span>
-            </li>
-            {% endfor %}
-        </ul>
+        {% if search %}
+        <table class="domain-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Domain Name</th>
+                    <th>Status</th>
+                    <th>Created Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for domain in search %}
+                <tr>
+                    <td>{{ domain.id }}</td>
+                    <td>{{ domain.domain_name }}</td>
+                    <td>{{ "Active" if domain.isActive else "Inactive" }}</td>
+                    <td>{{ domain.createdDate.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        <button class="view-btn" data-domain-id="{{ domain.id }}">View</button>
+                        <button class="delete-btn" data-domain-id="{{ domain.id }}">Delete</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No recent searches found.</p>
+        {% endif %}
     </div>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module" src="{{ url_for('static', path='js/profile.js') }}"></script>
 {% endblock %}

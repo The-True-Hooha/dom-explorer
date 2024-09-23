@@ -59,7 +59,7 @@ def handle_login_user(data: LoginData, request: Request, response: Response, db:
         httponly=True,
         secure=True,
         samesite="strict",
-        max_age=6*60
+        max_age=6*60,
     )
     return data
 

@@ -1,49 +1,60 @@
 {% extends "base.html" %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/login.css') }}">
+<link href="{{ url_for('static', path='js/login.js') }}">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+{% endblock %}
+
 {% block content %}
-<section class="login-section">
-    <div class="container">
-        <h2>Login to Dom Explorer</h2>
-        <form id="loginForm" class="login-form">
-            <div class="form-group">
-                <label for="username">Username:</label>
-                <input type="text" id="username" name="username" required>
-            </div>
-            <div class="form-group">
-                <label for="password">Password:</label>
-                <input type="password" id="password" name="password" required>
-            </div>
-            <button type="submit">Login</button>
-        </form>
-        <p class="form-message"></p>
+<div class="auth-container">
+  <div class="auth-content">
+    <h2 class="auth-title">Welcome</h2>
+    <div class="tabs">
+      <button class="tab active" data-tab="login">Login</button>
+      <button class="tab" data-tab="register">Register</button>
     </div>
-</section>
+    <div id="loginForm" class="tab-content active">
+      <form>
+        <div class="form-group">
+          <label for="login-email" class="sr-only">Email address</label>
+          <input id="login-email" name="email" type="email" required class="input-field" placeholder="Email address">
+        </div>
+        <div class="form-group">
+          <label for="login-password" class="sr-only">Password</label>
+          <input id="login-password" name="password" type="password" required class="input-field" placeholder="Password">
+        </div>
+        <div class="form-group">
+          <button type="submit" class="submit-button">Sign in</button>
+        </div>
+      </form>
+      <p id="loginMessage" class="form-message"></p>
+    </div>
+    <div id="registerForm" class="tab-content">
+      <form>
+        <!-- <div class="form-group">
+          <label for="register-username" class="sr-only">Username</label>
+          <input id="register-username" name="username" type="text" required class="input-field" placeholder="Username">
+        </div> -->
+        <div class="form-group">
+          <label for="register-email" class="sr-only">Email address</label>
+          <input id="register-email" name="email" type="email" required class="input-field" placeholder="Email address">
+        </div>
+        <div class="form-group">
+          <label for="register-password" class="sr-only">Password</label>
+          <input id="register-password" name="password" type="password" required class="input-field" placeholder="Password">
+        </div>
+        <div class="form-group">
+          <button type="submit" class="submit-button">Create account</button>
+        </div>
+      </form>
+      <p id="registerMessage" class="form-message"></p>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
-<script>
-    document.getElementById('loginForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
-        try {
-            const response = await fetch('/api/v1/token', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`,
-            });
-            if (response.ok) {
-                window.location.href = '/profile';
-            } else {
-                const data = await response.json();
-                document.querySelector('.form-message').textContent = data.detail || 'Login failed';
-            }
-        } catch (error) {
-            console.error('Login error:', error);
-            document.querySelector('.form-message').textContent = 'An error occurred. Please try again.';
-        }
-    });
-</script>
+<script type="module" src="{{ url_for('static', path='js/login.js') }}"></script>
+<!-- <script type="module" src="{{ url_for('static', path='js/api.js') }}"></script> -->
 {% endblock %}
