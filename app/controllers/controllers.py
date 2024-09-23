@@ -89,7 +89,7 @@ async def get_user_domains(
 
 
 @router.get("/domains/{id}")
-@limiter.limit("10/minute")
+@limiter.limit("15/minute")
 async def read_user_domain(
     request: Request,
     id: int,
