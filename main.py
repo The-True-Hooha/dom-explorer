@@ -48,12 +48,12 @@ async def user_login_page(request: Request):
 async def user_profile_page(request: Request, current_user: User = Depends(get_user_from_cookie), db: Session = Depends(get_database)):
     if not current_user:
         return RedirectResponse(url="/login")
-
+    
     recent_search = []
     return templates.TemplateResponse(request=request, name="profile.html", context={
-        "request": request,
+        # "request": request,
         "user": current_user,
-        "recent_searches": recent_searches
+        # "recent_searches": recent_searches
     })
 
 
