@@ -1,3 +1,9 @@
+function changePage(newPage) {
+  currentPage = newPage;
+  const skip = (currentPage - 1) * itemsPerPage;
+  fetchSubdomains(currentDomainId, skip, itemsPerPage);
+}
+
 let currentDomainId = null;
 let currentPage = 1;
 const itemsPerPage = 10;
@@ -106,8 +112,3 @@ function updatePagination(data) {
   }
 }
 
-function changePage(newPage) {
-  currentPage = newPage;
-  const skip = (currentPage - 1) * itemsPerPage;
-  fetchSubdomains(currentDomainId, skip, itemsPerPage);
-}

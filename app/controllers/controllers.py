@@ -9,7 +9,7 @@ from app.core.core import limiter
 from app.schema.schema import UserCreate, DomainResponse, Token, CreateUserResponse, LoginData, LoginResponse, PaginatedDomainsResponse, PaginatedSubDomainsResponse, SubdomainSearchResponse
 from app.database.database import User, Domain, SubDomain, get_database
 from app.service.search_enumerator import get_subdomain_data, get_updated_domains
-from app.service.service import create_new_user, create_access_token, get_user_from_cookie, isAdmin, get_user, login_user, get_my_profile, get_user_domain_with_subdomains, get_user_domains
+from app.service.service import create_new_user, create_access_token, get_user_from_cookie, isAdmin, get_user, login_user, get_my_profile, get_user_domain_with_subdomains, get_user_domains, get_auth_user
 
 router = APIRouter()
 
@@ -44,7 +44,7 @@ def create_user(user: UserCreate, response: Response, request: Request, db: Sess
         httponly=True,
         secure=True,
         samesite="strict",
-        max_age=6*60
+        max_age=14 * 24 * 60 * 60
     )
     return new_user
 
@@ -59,7 +59,7 @@ def handle_login_user(data: LoginData, request: Request, response: Response, db:
         httponly=True,
         secure=True,
         samesite="strict",
-        max_age=6*60,
+        max_age=14 * 24 * 60 * 60,
     )
     return data
 

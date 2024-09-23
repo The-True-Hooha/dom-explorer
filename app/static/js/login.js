@@ -23,12 +23,11 @@ document.addEventListener("DOMContentLoaded", function () {
       const email = document.getElementById("login-email").value;
       console.log(email);
       const password = document.getElementById("login-password").value;
-      console.log(password);
       document.getElementById("loginMessage").textContent =
         HandleAuthInputValidation(email, password, "loginMessage");
       const data = await handleAuthRequest(email, password, "login")
       // const data = await loginRequest(email, password)
-      document.getElementById("loginMessage").textContent = data
+      document.getElementById("loginMessage").textContent = data.detail
     });
 
   document
@@ -41,7 +40,7 @@ document.addEventListener("DOMContentLoaded", function () {
       document.getElementById("registerMessage").textContent =
         HandleAuthInputValidation(email, password, "registerMessage");
       const data = await handleAuthRequest(email, password, "signup");
-      document.getElementById("registerMessage").textContent = data;
+      document.getElementById("registerMessage").textContent = data.detail;
     });
 });
 

@@ -32,16 +32,19 @@
     </div>
 </section>
 
+<section id="loader" class="loader hidden">
+    <div class="spinner"></div>
+    <p>Searching for subdomains...</p>
+</section>
+
 <section id="results" class="results hidden">
     <div class="container">
         <h3>Search Results</h3>
-        <ul id="subdomainList"></ul>
+        <div id="resultsContent"></div>
     </div>
 </section>
 {% endblock %}
 
 {% block extra_js %}
-<script>
-    // Any additional JavaScript specific to the index page can go here
-</script>
+<script src="{{ url_for('static', path='js/main.js') }}"></script>
 {% endblock %}

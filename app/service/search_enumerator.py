@@ -327,6 +327,7 @@ class SubDomainScrapper:
 
 async def get_subdomain_data(domain: str, db: Session, user: User) -> Dict[str, List[str]]:
     try:
+        print("is it coming?")
         parsed_domain = urlparse(f"http://{domain}").netloc
         res = SubDomainScrapper(parsed_domain)
         data = await res.run_all_query_async()
@@ -355,6 +356,7 @@ async def get_subdomain_data(domain: str, db: Session, user: User) -> Dict[str, 
             "wildcards": sorted(list(res.wildcard_subdomains))
         }
     except Exception as e:
+        print(e)
         raise HTTPException(
             status_code=500, detail=f"An error occurred: {str(e)}")
 
