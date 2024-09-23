@@ -1,9 +1,3 @@
-function changePage(newPage) {
-  currentPage = newPage;
-  const skip = (currentPage - 1) * itemsPerPage;
-  fetchSubdomains(currentDomainId, skip, itemsPerPage);
-}
-
 let currentDomainId = null;
 let currentPage = 1;
 const itemsPerPage = 10;
@@ -70,7 +64,7 @@ function displaySubdomains(data) {
     tableHTML += `
       <tr>
         <td>${subdomain.name}</td>
-        <td>${subdomain.isActive ? "Active" : "Active"}</td>
+        <td>${subdomain.isActive ? "Active" : "Inactive"}</td>
         <td>${new Date(subdomain.createdDate).toLocaleString()}</td>
       </tr>
     `;
@@ -92,7 +86,7 @@ function updatePagination(data) {
   const totalPages = Math.ceil(data.total_subdomains / itemsPerPage);
 
   if (currentPage > 1) {
-    pagination.innerHTML += `<button onclick="changePage(${
+    pagination.innerHTML += `<button onclick="window.changePage(${
       currentPage - 1
     })">Previous</button>`;
   }
@@ -101,14 +95,20 @@ function updatePagination(data) {
     if (i === currentPage) {
       pagination.innerHTML += `<span>${i}</span>`;
     } else {
-      pagination.innerHTML += `<button onclick="changePage(${i})">${i}</button>`;
+      pagination.innerHTML += `<button onclick="window.changePage(${i})">${i}</button>`;
     }
   }
 
   if (currentPage < totalPages) {
-    pagination.innerHTML += `<button onclick="changePage(${
+    pagination.innerHTML += `<button onclick="window.changePage(${
       currentPage + 1
     })">Next</button>`;
   }
 }
 
+// Make changePage function globally accessible
+window.changePage = function (newPage) {
+  currentPage = newPage;
+  const skip = (currentPage - 1) * itemsPerPage;
+  fetchSubdomains(currentDomainId, skip, itemsPerPage);
+};
