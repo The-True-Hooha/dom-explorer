@@ -35,7 +35,7 @@ class User(Base):
     createdDate = Column(DateTime, server_default=func.now())
     
     def __str__(self):
-        return f"User(id={self.id}, email='{self.email}', role='{self.role}', createdDate='{self.createdDate}', domains='{self.domains}'),"
+        return f"User(id={self.id}, email='{self.email}', role='{self.role}', createdDate='{self.createdDate}', domains='{self.domains[:5]}'),"
     
     def __repr__(self):
         return self.__str__()
@@ -53,7 +53,7 @@ class Domain(Base):
                          default=datetime.datetime.utcnow)
     
     def __str__(self):
-        return f"Domain(id={self.id}, name='{self.domain_name}', active={self.isActive}, user_id={self.user_id})"
+        return f"Domain(id={self.id}, name='{self.domain_name}', active={self.isActive}, user_id={self.user_id}, createdDate={self.createdDate})"
 
     def __repr__(self):
         return self.__str__()
