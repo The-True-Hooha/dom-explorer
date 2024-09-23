@@ -63,6 +63,7 @@ def handle_login_user(data: LoginData, request: Request, response: Response, db:
     )
     return data
 
+
 @router.get("/profile/me")
 @limiter.limit("5/minute")
 def my_profile(request: Request, user: User = Depends(get_user_from_cookie), db: Session = Depends(get_database)):
@@ -72,7 +73,7 @@ def my_profile(request: Request, user: User = Depends(get_user_from_cookie), db:
 @router.get("/domains", response_model=PaginatedDomainsResponse)
 @limiter.limit("10/minute")
 async def get_user_domains(
-    request:Request,
+    request: Request,
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
     current_user: User = Depends(get_user_from_cookie),
@@ -87,7 +88,7 @@ async def get_user_domains(
     )
 
 
-@router.get("/domains/{id}", response_model=PaginatedSubDomainsResponse)
+@router.get("/domains/{id}")
 @limiter.limit("10/minute")
 async def read_user_domain(
     request: Request,
@@ -101,17 +102,17 @@ async def read_user_domain(
         db, current_user, id, skip, limit)
     if domain is None:
         raise HTTPException(status_code=404, detail="Domain cannot be found")
-    return PaginatedSubDomainsResponse(
-        domain=domain,
-        sub_domains=domain.sub_domains,
-        total_subdomains=total_subdomains,
-        skip=skip,
-        limit=limit
-    )
+    return {
+        "domain": domain,
+        "sub_domains": domain.sub_domains,
+        "total_subdomains": total_subdomains,
+        "skip": skip,
+        "limit": limit
+    }
 
 
 @router.get("/domain/check-updates")
 @limiter.limit("5/minute")
-async def get_domain_updates(request:Request, domain:str, user:User = Depends(get_user_from_cookie), db:Session = Depends(get_database)):
+async def get_domain_updates(request: Request, domain: str, user: User = Depends(get_user_from_cookie), db: Session = Depends(get_database)):
     data = await get_updated_domains(db=db, domain=domain, user=user)
     return SubdomainSearchResponse(**data)
