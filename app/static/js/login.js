@@ -23,75 +23,28 @@ document.addEventListener("DOMContentLoaded", function () {
       const email = document.getElementById("login-email").value;
       console.log(email);
       const password = document.getElementById("login-password").value;
-      console.log(password);
-      // document.getElementById("loginMessage").textContent =
-        // HandleAuthInputValidation(email, password, "loginMessage");
+      document.getElementById("loginMessage").textContent =
+        HandleAuthInputValidation(email, password, "loginMessage");
       const data = await handleAuthRequest(email, password, "login")
       // const data = await loginRequest(email, password)
-      document.getElementById("loginMessage").textContent = data
-      // try {
-      //   const response = await fetch("/api/v1/token", {
-      //     method: "POST",
-      //     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      //     body: `email=${encodeURIComponent(
-      //       email
-      //     )}&password=${encodeURIComponent(password)}`,
-      //   });
-      //   if (response.ok) {
-      //     window.location.href = "/profile";
-      //   } else {
-      //     const data = await response.json();
-      //     document.getElementById("loginMessage").textContent =
-      //       data.detail || "Login failed";
-      //   }
-      // } catch (error) {
-      //   console.error("Login error:", error);
-      //   document.getElementById("loginMessage").textContent =
-      //     "An error occurred. Please try again.";
-      // }
+      document.getElementById("loginMessage").textContent = data.detail
     });
 
   document
     .querySelector("#registerForm form")
     .addEventListener("submit", async (e) => {
       e.preventDefault();
-      //   const username = document.getElementById("register-username").value;
       const email = document.getElementById("register-email").value;
       const password = document.getElementById("register-password").value;
-      const confirmPassword = document.getElementById(
-        "register-confirm-password"
-      ).value;
-
-      if (password !== confirmPassword) {
-        document.getElementById("registerMessage").textContent =
-          "Passwords do not match";
-        return;
-      }
-
-      try {
-        const response = await fetch("/api/v1/users", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        });
-        if (response.ok) {
-          document.getElementById("registerMessage").textContent =
-            "Registration successful! Please login.";
-        } else {
-          const data = await response.json();
-          document.getElementById("registerMessage").textContent =
-            data.detail || "Registration failed";
-        }
-      } catch (error) {
-        console.error("Registration error:", error);
-        document.getElementById("registerMessage").textContent =
-          "An error occurred. Please try again.";
-      }
+    
+      document.getElementById("registerMessage").textContent =
+        HandleAuthInputValidation(email, password, "registerMessage");
+      const data = await handleAuthRequest(email, password, "signup");
+      document.getElementById("registerMessage").textContent = data.detail;
     });
 });
 
 function HandleAuthInputValidation(email, password, element) {
-  console.log("hello here", email);
   const messageElement = document.getElementById(element);
   messageElement.textContent = "";
 
@@ -133,12 +86,3 @@ export async function handleAuthRequest(email, password, type) {
     console.log(error);
   }
 }
-
-
-/*
-test data
-{
-  "email": "a11@gmail.com",
-  "password": "some_password"
-}
-*/

@@ -52,7 +52,8 @@ async def user_profile_page(request: Request, current_user: User = Depends(get_u
     return templates.TemplateResponse(request=request, name="profile.html", context={
         "request": request,
         "user": current_user,
-        "search": current_user.domains
+        "search": current_user.domains,
+        "name": get_name_from_email(current_user.email)
     })
 
 
@@ -104,6 +105,13 @@ async def add_no_cache_headers(request: Request, call_next):
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
     return response
+
+
+def get_name_from_email(email):
+    at_index = email.find('@')
+    if at_index != -1:
+        return email[:at_index]
+    return email
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

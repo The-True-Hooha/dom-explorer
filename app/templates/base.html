@@ -37,8 +37,8 @@
         </footer>
     </div>
 
+    {% block extra_js %}
     <script src="{{ url_for('static', path='js/api.js') }}"></script>
-    <script src="{{ url_for('static', path='js/main.js') }}"></script>
-    {% block extra_js %}{% endblock %}
+    {% endblock %}
 </body>
 </html>

@@ -9,12 +9,12 @@
 <section class="profile-section">
     <div class="container">
         <div class="profile-info">
-            <h2>User Profile</h2>
+            <p>Hi, {{ name }}</p>
             <p><strong>Email:</strong> {{ user.email }}</p>
             <p><strong>Member since:</strong> {{ user.createdDate.strftime('%B %d, %Y') }}</p>
         </div>
 
-        <h3>Your Recent Searches</h3>
+        <h3>Your Domains</h3>
         {% if search %}
         <table class="domain-table">
             <thead>
@@ -42,8 +42,17 @@
             </tbody>
         </table>
         {% else %}
-        <p>No recent searches found.</p>
+        <p>No domains found.</p>
         {% endif %}
+    </div>
+
+    <div id="subdomainModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <p>Subdomains for {{search[0].domain_name}}</p>
+            <div id="subdomainList"></div>
+            <div id="pagination"></div>
+        </div>
     </div>
 </section>
 {% endblock %}
