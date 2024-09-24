@@ -64,7 +64,7 @@ function displaySubdomains(data) {
     tableHTML += `
       <tr>
         <td>${subdomain.name}</td>
-        <td>${subdomain.isActive ? "Active" : "Inactive"}</td>
+        <td>${subdomain.isActive ? "Active" : "Active"}</td>
         <td>${new Date(subdomain.createdDate).toLocaleString()}</td>
       </tr>
     `;
