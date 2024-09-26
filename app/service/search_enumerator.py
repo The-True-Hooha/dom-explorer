@@ -4,6 +4,7 @@ import concurrent.futures
 import random
 import logging
 import asyncio
+import json
 import dns.resolver
 import re
 
@@ -13,11 +14,15 @@ from typing import List, Dict, Set
 from urllib.parse import urlparse, quote_plus
 from app.database.database import get_database, User, Domain, SubDomain
 from sqlalchemy.orm import Session
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from cachetools import TTLCache
 
 logger = logging.getLogger(__name__)
 
 
 class SubDomainScrapper:
+    cache = TTLCache(maxsize=500, ttl=300) # for 5 mins
+    
     def __init__(self, domain: str):
         self.domain = domain
         self.subdomains: Set[str] = set()
@@ -82,12 +87,27 @@ class SubDomainScrapper:
 
         logger.info(f"Search engine enumeration complete. Found {len(
             self.subdomains)} regular subdomains and {len(self.wildcard_subdomains)} wildcard subdomains")
-
+        
+        
+    @retry(
+        stop=stop_after_attempt(6),
+        wait=wait_exponential(multiplier=1, min=4, max=10), #retries after 10 second multiplier interval
+        retry=retry_if_exception_type((httpx.HTTPError, status.HTTP_503_SERVICE_UNAVAILABLE, json.JSONDecodeError)),
+        reraise=True
+    )
     async def crt_sh_query(self):
+        if self.domain in self.cache:
+            logger.info(f"using cache results found for {self.domain}")
+            c_data = self.cache[self.domain]
+            self.subdomains = c_data['subdomains']
+            self.wildcard_subdomains = c_data['wildcard_subdomains']
+            return
+            
         url = f"https://crt.sh/?q=%.{self.domain}&output=json"
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.get(url)
+                response.raise_for_status()
                 data = response.json()
 
                 for entry in data:
@@ -100,9 +120,14 @@ class SubDomainScrapper:
                                 self.wildcard_subdomains.add(part)
                             else:
                                 self.subdomains.add(part)
+            self.cache[self.domain] = {
+                'subdomains': self.subdomains,
+                'wildcard_subdomains': self.wildcard_subdomains
+            }
         except json.JSONDecodeError:
             print("Error: Invalid JSON response from crt.sh")
         except Exception as e:
+            print(e)
             print(f"Error fetching from crt.sh query: {str(e)}")
 
     async def dns_query(self):
@@ -327,28 +352,28 @@ class SubDomainScrapper:
 
 async def get_subdomain_data(domain: str, db: Session, user: User) -> Dict[str, List[str]]:
     try:
-        print("is it coming?")
         parsed_domain = urlparse(f"http://{domain}").netloc
         res = SubDomainScrapper(parsed_domain)
         data = await res.run_all_query_async()
+        
+        if user:
+            find_domain = db.query(Domain).filter(
+                Domain.domain_name == parsed_domain, Domain.user_id == user.id).first()
+            if not find_domain:
+                find_domain = Domain(
+                    domain_name=parsed_domain, user_id=user.id
+                )
+                db.add(find_domain)
+                db.flush()
 
-        find_domain = db.query(Domain).filter(
-            Domain.domain_name == parsed_domain, Domain.user_id == user.id).first()
-        if not find_domain:
-            find_domain = Domain(
-                domain_name=parsed_domain, user_id=user.id
-            )
-            db.add(find_domain)
-            db.flush()
-
-        all_subs = list(res.subdomains) + list(res.wildcard_subdomains)
-        for i in all_subs:
-            sub = db.query(SubDomain).filter(SubDomain.name == i,
-                                             SubDomain.domain_id == find_domain.id).first()
-            if not sub:
-                sub = SubDomain(name=i, domain_id=find_domain.id)
-                db.add(sub)
-        db.commit()
+            all_subs = list(res.subdomains) + list(res.wildcard_subdomains)
+            for i in all_subs:
+                sub = db.query(SubDomain).filter(SubDomain.name == i,
+                                                SubDomain.domain_id == find_domain.id).first()
+                if not sub:
+                    sub = SubDomain(name=i, domain_id=find_domain.id)
+                    db.add(sub)
+            db.commit()
         return {
             "domain": domain,
             "count": len(res.subdomains)+len(res.wildcard_subdomains),
