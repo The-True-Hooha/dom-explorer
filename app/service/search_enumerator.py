@@ -4,6 +4,7 @@ import concurrent.futures
 import random
 import logging
 import asyncio
+import json
 import dns.resolver
 import re
 
@@ -13,11 +14,15 @@ from typing import List, Dict, Set
 from urllib.parse import urlparse, quote_plus
 from app.database.database import get_database, User, Domain, SubDomain
 from sqlalchemy.orm import Session
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, before_sleep_log
+from cachetools import TTLCache
 
 logger = logging.getLogger(__name__)
 
 
 class SubDomainScrapper:
+    cache = TTLCache(maxsize=500, ttl=900)  # for 5 mins
+
     def __init__(self, domain: str):
         self.domain = domain
         self.subdomains: Set[str] = set()
@@ -83,11 +88,27 @@ class SubDomainScrapper:
         logger.info(f"Search engine enumeration complete. Found {len(
             self.subdomains)} regular subdomains and {len(self.wildcard_subdomains)} wildcard subdomains")
 
+    @retry(
+        stop=stop_after_attempt(6),
+        wait=wait_exponential(multiplier=1, min=4, max=60),
+        retry=retry_if_exception_type(
+            (httpx.HTTPError, status.HTTP_503_SERVICE_UNAVAILABLE, json.JSONDecodeError)),
+        before_sleep=before_sleep_log(logger=logger, log_level=logger.info),
+        reraise=True
+    )
     async def crt_sh_query(self):
+        if self.domain in self.cache:
+            logger.info(f"using cache results found for {self.domain}")
+            c_data = self.cache[self.domain]
+            self.subdomains = c_data['subdomains']
+            self.wildcard_subdomains = c_data['wildcard_subdomains']
+            return
+
         url = f"https://crt.sh/?q=%.{self.domain}&output=json"
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.get(url)
+                response.raise_for_status()
                 data = response.json()
 
                 for entry in data:
@@ -100,43 +121,66 @@ class SubDomainScrapper:
                                 self.wildcard_subdomains.add(part)
                             else:
                                 self.subdomains.add(part)
+            self.cache[self.domain] = {
+                'subdomains': self.subdomains,
+                'wildcard_subdomains': self.wildcard_subdomains
+            }
         except json.JSONDecodeError:
             print("Error: Invalid JSON response from crt.sh")
         except Exception as e:
+            print(e)
             print(f"Error fetching from crt.sh query: {str(e)}")
 
     async def dns_query(self):
         resolver = dns.resolver.Resolver()
         resolver.nameservers = ['8.8.8.8', '8.8.4.4']
+
+        # Attempt wildcard query
         try:
-            try:
-                wildcard_results = resolver.resolve(f"*.{self.domain}", 'A')
-                self.wildcard_subdomains.add(f"*.{self.domain}")
-            except dns.resolver.NXDOMAIN:
-                pass
-            common_subdomains = [
-                'www', 'mail', 'ftp', 'localhost', 'webmail', 'smtp', 'pop', 'ns1',
-                'webdisk', 'ns2', 'cpanel', 'whm', 'autodiscover', 'autoconfig', 'm',
-                'imap', 'test', 'ns', 'blog', 'pop3', 'dev', 'www2', 'admin', 'forum',
-                'news', 'vpn', 'ns3', 'mail2', 'new', 'mysql', 'old', 'lists', 'support',
-                'mobile', 'mx', 'static', 'docs', 'beta', 'shop', 'sql', 'secure', 'demo',
-                'cp', 'calendar', 'wiki', 'web', 'media', 'email', 'images',
-                'img', 'www1', 'intranet', 'portal', 'video', 'sip', 'dns2', 'api', 'cdn',
-                'stats', 'dns1', 'ns4', 'www3', 'dns', 'search', 'staging', 'server', 'mx1',
-                'chat', 'wap', 'my', 'svn', 'mail1', 'sites', 'proxy', 'ads', 'host', 'crm',
-                'cms', 'backup', 'mx2', 'lyncdiscover', 'info', 'apps', 'download', 'remote',
-                'db', 'forums', 'store', 'relay', 'files', 'newsletter', 'app', 'live', 'owa',
-                'en', 'start', 'sms', 'office', 'exchange', 'ipv4'
-            ]
-            for subdomain in common_subdomains:
-                try:
-                    results = resolver.resolve(
-                        f"{subdomain}.{self.domain}", 'A')
-                    self.subdomains.add(f"{subdomain}.{self.domain}")
-                except Exception as e:
-                    pass  # Subdomain doesn't exist or other DNS error
+            wildcard_results = resolver.resolve(f"*.{self.domain}", 'A')
+            self.wildcard_subdomains.add(f"*.{self.domain}")
+            logger.info(f"Wildcard DNS entry found for {self.domain}")
+        except dns.resolver.NXDOMAIN:
+            logger.info(f"No wildcard DNS entry for {self.domain}")
+        except dns.resolver.NoAnswer:
+            logger.info(f"No answer for wildcard DNS query for {self.domain}")
         except Exception as e:
-            print(f"Error in dns_query: {str(e)}")
+            logger.error(f"Error in wildcard DNS query for {
+                         self.domain}: {str(e)}")
+
+        # Query common subdomains
+        common_subdomains = [
+            'www', 'mail', 'ftp', 'localhost', 'webmail', 'smtp', 'pop', 'ns1',
+            'webdisk', 'ns2', 'cpanel', 'whm', 'autodiscover', 'autoconfig', 'm',
+            'imap', 'test', 'ns', 'blog', 'pop3', 'dev', 'www2', 'admin', 'forum',
+            'news', 'vpn', 'ns3', 'mail2', 'new', 'mysql', 'old', 'lists', 'support',
+            'mobile', 'mx', 'static', 'docs', 'beta', 'shop', 'sql', 'secure', 'demo',
+            'cp', 'calendar', 'wiki', 'web', 'media', 'email', 'images',
+            'img', 'www1', 'intranet', 'portal', 'video', 'sip', 'dns2', 'api', 'cdn',
+            'stats', 'dns1', 'ns4', 'www3', 'dns', 'search', 'staging', 'server', 'mx1',
+            'chat', 'wap', 'my', 'svn', 'mail1', 'sites', 'proxy', 'ads', 'host', 'crm',
+            'cms', 'backup', 'mx2', 'lyncdiscover', 'info', 'apps', 'download', 'remote',
+            'db', 'forums', 'store', 'relay', 'files', 'newsletter', 'app', 'live', 'owa',
+            'en', 'start', 'sms', 'office', 'exchange', 'ipv4'
+        ]
+
+        for subdomain in common_subdomains:
+            try:
+                fqdn = f"{subdomain}.{self.domain}"
+                results = resolver.resolve(fqdn, 'A')
+                self.subdomains.add(fqdn)
+                logger.info(f"Found subdomain: {fqdn}")
+            except dns.resolver.NXDOMAIN:
+                logger.debug(f"Subdomain does not exist: {fqdn}")
+            except dns.resolver.NoAnswer:
+                logger.debug(f"No DNS records for: {fqdn}")
+            except dns.resolver.Timeout:
+                logger.warning(f"DNS query timed out for: {fqdn}")
+            except Exception as e:
+                logger.error(f"Error querying {fqdn}: {str(e)}")
+
+        logger.info(f"DNS query completed for {self.domain}. Found {
+                    len(self.subdomains)} subdomains.")
 
     async def netcraft_query(self):
         url = f'https://searchdns.netcraft.com/?restriction=site+ends+with&host={
@@ -327,28 +371,28 @@ class SubDomainScrapper:
 
 async def get_subdomain_data(domain: str, db: Session, user: User) -> Dict[str, List[str]]:
     try:
-        print("is it coming?")
         parsed_domain = urlparse(f"http://{domain}").netloc
         res = SubDomainScrapper(parsed_domain)
         data = await res.run_all_query_async()
 
-        find_domain = db.query(Domain).filter(
-            Domain.domain_name == parsed_domain, Domain.user_id == user.id).first()
-        if not find_domain:
-            find_domain = Domain(
-                domain_name=parsed_domain, user_id=user.id
-            )
-            db.add(find_domain)
-            db.flush()
+        if user:
+            find_domain = db.query(Domain).filter(
+                Domain.domain_name == parsed_domain, Domain.user_id == user.id).first()
+            if not find_domain:
+                find_domain = Domain(
+                    domain_name=parsed_domain, user_id=user.id
+                )
+                db.add(find_domain)
+                db.flush()
 
-        all_subs = list(res.subdomains) + list(res.wildcard_subdomains)
-        for i in all_subs:
-            sub = db.query(SubDomain).filter(SubDomain.name == i,
-                                             SubDomain.domain_id == find_domain.id).first()
-            if not sub:
-                sub = SubDomain(name=i, domain_id=find_domain.id)
-                db.add(sub)
-        db.commit()
+            all_subs = list(res.subdomains) + list(res.wildcard_subdomains)
+            for i in all_subs:
+                sub = db.query(SubDomain).filter(SubDomain.name == i,
+                                                 SubDomain.domain_id == find_domain.id).first()
+                if not sub:
+                    sub = SubDomain(name=i, domain_id=find_domain.id)
+                    db.add(sub)
+            db.commit()
         return {
             "domain": domain,
             "count": len(res.subdomains)+len(res.wildcard_subdomains),
