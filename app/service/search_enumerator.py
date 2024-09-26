@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 class SubDomainScrapper:
-    cache = TTLCache(maxsize=500, ttl=300)  # for 5 mins
+    cache = TTLCache(maxsize=500, ttl=900)  # for 5 mins
 
     def __init__(self, domain: str):
         self.domain = domain
