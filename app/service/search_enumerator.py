@@ -14,7 +14,7 @@ from typing import List, Dict, Set
 from urllib.parse import urlparse, quote_plus
 from app.database.database import get_database, User, Domain, SubDomain
 from sqlalchemy.orm import Session
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, before_sleep_log
 from cachetools import TTLCache
 
 logger = logging.getLogger(__name__)
@@ -91,8 +91,9 @@ class SubDomainScrapper:
         
     @retry(
         stop=stop_after_attempt(6),
-        wait=wait_exponential(multiplier=1, min=4, max=10), #retries after 10 second multiplier interval
+        wait=wait_exponential(multiplier=1, min=4, max=60), #retries after 10 second multiplier interval
         retry=retry_if_exception_type((httpx.HTTPError, status.HTTP_503_SERVICE_UNAVAILABLE, json.JSONDecodeError)),
+        before_sleep=before_sleep_log(logger=logger, log_level=logger.info),
         reraise=True
     )
     async def crt_sh_query(self):
