@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, status, Request, Query, R
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 from app.core.core import limiter
 
@@ -27,12 +27,20 @@ def run_health_check(db: Session = Depends(get_database)):
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
 
 
+async def if_found_user(request: Request, db: Session = Depends(get_database)) -> Optional[User]:
+    try:
+        return await get_user_from_cookie(request, db)
+    except:
+        return None
+
 @router.get("/search", response_model=DomainResponse)
 @limiter.limit("5/minute")
-async def search_sub_domain(domain: str, request: Request, user: User = Depends(get_user_from_cookie), db: Session = Depends(get_database)):
-    data = await get_subdomain_data(domain, db, user)
+async def search_sub_domain(domain: str,
+                            request: Request,
+                            user: Optional[User] = Depends(if_found_user),
+                            db: Session = Depends(get_database)):
+    data = await get_subdomain_data(domain, db, user.id if user else None)
     return data
-
 
 @router.post("/signup", response_model=CreateUserResponse)
 @limiter.limit("5/minute")
