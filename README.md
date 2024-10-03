@@ -73,3 +73,6 @@ Before you begin, ensure you have met the following requirements:
 ## Testing
 
 You can test the application using tools like `curl`, Postman, or directly in your browser.
+
+- handle export to csv
+- refactor for mobile
